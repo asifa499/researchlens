@@ -9,254 +9,455 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
-  body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',system-ui,sans-serif}
-  @keyframes rl-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-  select option{background:#111;color:#fff}
-  ::-webkit-scrollbar{width:4px}
-  ::-webkit-scrollbar-track{background:#000}
-  ::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
-  textarea,input,select,button{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
+@keyframes rl-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+select option{background:#111;color:#fff}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#000}
+::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
+textarea,input,select,button{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const{useState,useEffect,useRef}=React;
+const {useState, useEffect, useRef} = React;
 
-const G={bg:"#000000",surface:"#0a0a0a",card:"#111111",border:"#222222",text:"#ffffff",accent:"#FF9500"};
-const ARCH_COLORS=["#FF9500","#FF6B00","#FFB340","#FF3B30","#34C759","#007AFF","#AF52DE","#FF2D55"];
-const TIERS={
+// ── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SB_URL = "https://kdfmsqftwqjkcoonidul.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZm1zcWZ0d3Fqa2Nvb25pZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjc0OTEsImV4cCI6MjA4ODY0MzQ5MX0.bnNns9UePVdJ5dsg3UAd9TiRo6BLIEP4VOwTQv4AlGg";
+const SB_HEADERS = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
+
+const sbLoad = async () => {
+  try {
+    const res = await fetch(SB_URL+"/rest/v1/projects?order=created_at.desc", {headers: SB_HEADERS});
+    if (res.ok) { const rows = await res.json(); return rows.map(r => r.data); }
+  } catch(_) {}
+  try { const d = localStorage.getItem("rl_v1"); return d ? JSON.parse(d) : []; } catch(_) { return []; }
+};
+
+const sbSave = async (list) => {
+  try {
+    await fetch(SB_URL+"/rest/v1/projects", {
+      method:"POST",
+      headers:{...SB_HEADERS,"Prefer":"resolution=merge-duplicates"},
+      body: JSON.stringify(list.map(p => ({id:p.id, data:p})))
+    });
+  } catch(_) {}
+  try { localStorage.setItem("rl_v1", JSON.stringify(list)); } catch(_) {}
+};
+
+const sbDelete = async (id) => {
+  try { await fetch(SB_URL+"/rest/v1/projects?id=eq."+id, {method:"DELETE", headers:SB_HEADERS}); } catch(_) {}
+};
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const ARCH_COLORS = ["#FF9500","#FF6B00","#FFB340","#FF3B30","#34C759","#007AFF","#AF52DE","#FF2D55"];
+const TIERS = {
   1:{id:1,label:"AI Only",icon:"🧠",badge:"Synthetic · AI-generated",badgeColor:"#888",badgeBg:"rgba(136,136,136,0.1)",badgeBorder:"rgba(136,136,136,0.2)",desc:"Fast internal ideation",time:"~8 sec",dot:"#888",providers:[]},
   2:{id:2,label:"AI + Web Search",icon:"🌐",badge:"Grounded · Live web data",badgeColor:"#FF9500",badgeBg:"rgba(255,149,0,0.1)",badgeBorder:"rgba(255,149,0,0.25)",desc:"Market entry & client reports",time:"~20–35 sec",dot:"#FF9500",providers:[]},
-  3:{id:3,label:"AI + Web + APIs",icon:"🏛",badge:"Verified · Third-party data",badgeColor:"#34C759",badgeBg:"rgba(52,199,89,0.1)",badgeBorder:"rgba(52,199,89,0.25)",desc:"Enterprise & investment decisions",time:"~45–90 sec",dot:"#34C759",providers:["World Bank","REST Countries","Open Exchange"]},
+  3:{id:3,label:"AI + Web + APIs",icon:"🏛",badge:"Verified · Third-party data",badgeColor:"#34C759",badgeBg:"rgba(52,199,89,0.1)",badgeBorder:"rgba(52,199,89,0.25)",desc:"Enterprise & investment decisions",time:"~45–90 sec",dot:"#34C759",providers:["World Bank","REST Countries","Open Exchange"]}
 };
-const PROVIDER_STYLES={
+const PROVIDER_STYLES = {
   "World Bank":{color:"#007AFF",bg:"rgba(0,122,255,0.1)",border:"rgba(0,122,255,0.25)",icon:"🏦"},
-  "Google Trends":{color:"#FF9500",bg:"rgba(255,149,0,0.1)",border:"rgba(255,149,0,0.25)",icon:"📈"},
   "REST Countries":{color:"#34C759",bg:"rgba(52,199,89,0.1)",border:"rgba(52,199,89,0.25)",icon:"🌍"},
-  "Open Exchange":{color:"#FF2D55",bg:"rgba(255,45,85,0.1)",border:"rgba(255,45,85,0.25)",icon:"💱"},
+  "Open Exchange":{color:"#FF2D55",bg:"rgba(255,45,85,0.1)",border:"rgba(255,45,85,0.25)",icon:"💱"}
 };
-const uid=()=>Math.random().toString(36).slice(2,10);
-const nowStr=()=>new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-const STORAGE_KEY="rl_html_v1";
-const TAGS_PRESET=["AdTech","Agriculture","AI & ML","Automotive","B2B","B2C","Banking","Beauty & Personal Care","BioTech","Blockchain & Web3","CleanTech","Construction","Cybersecurity","E-commerce","EdTech","Education","Energy & Utilities","Fashion & Apparel","FMCG","FinTech","Food & Beverage","FoodTech","Gaming","Government & Public Sector","Healthcare","HealthTech","Hospitality & Tourism","HR & Recruitment","Insurance","Legal & Compliance","LegalTech","Logistics & Supply Chain","Manufacturing","MarTech","Media & Entertainment","MedTech","Non-Profit","Pharmaceuticals","PropTech","Real Estate","Retail","SaaS","SpaceTech","Sports & Fitness","Telecom","Travel"].sort((a,b)=>a.localeCompare(b));
-const STATUS={draft:{color:"#888",bg:"rgba(136,136,136,0.1)",label:"Draft"},active:{color:"#FF9500",bg:"rgba(255,149,0,0.1)",label:"Active"},done:{color:"#34C759",bg:"rgba(52,199,89,0.1)",label:"Done"}};
-const LANGUAGES=[{code:"auto",label:"Auto — match geo"},{code:"en",label:"English"},{code:"ar",label:"Arabic"},{code:"fr",label:"French"},{code:"de",label:"German"},{code:"es",label:"Spanish"},{code:"pt",label:"Portuguese"},{code:"ru",label:"Russian"},{code:"zh",label:"Chinese"},{code:"ja",label:"Japanese"},{code:"tr",label:"Turkish"},{code:"hi",label:"Hindi"}];
-const RESEARCH_GOALS=["Market Entry","Market Sizing","Growth Opportunities","Competitor Analysis","Consumer Segmentation","Brand Positioning","Product Validation","Pricing Strategy","Campaign Targeting","Investment Due Diligence","Customer Retention","New Category Discovery"];
-const PERSONA_GROUPS=[
-  {key:"core",icon:"👤",label:"Core Demographics",fields:[{key:"ageMin",label:"Age Min",type:"input"},{key:"ageMax",label:"Age Max",type:"input"},{key:"gender",label:"Gender",type:"select",options:["All","Male","Female","Non-binary"]},{key:"incomeLevel",label:"Income Level",type:"select",options:["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"]},{key:"education",label:"Education",type:"select",options:["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"]},{key:"occupation",label:"Occupation",type:"select",options:["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"]},{key:"familySize",label:"Family Size",type:"select",options:["Single","2","2–4","4+","Multi-generational"]},{key:"lifestyle",label:"Lifestyle",type:"select",options:["Urban","Suburban","Rural","Nomadic","Mixed"]}]},
-  {key:"psych",icon:"🧠",label:"Psychological & Cognitive",fields:[{key:"digitalSavviness",label:"Digital Savviness",type:"multi",options:["Low","Medium","High","Tech-native"]},{key:"riskTolerance",label:"Risk Tolerance",type:"multi",options:["Averse","Cautious","Moderate","Aggressive"]},{key:"decisionMaking",label:"Decision-Making Style",type:"multi",options:["Impulsive","Deliberate","Influence-driven"]},{key:"brandLoyalty",label:"Brand Loyalty",type:"multi",options:["Switcher","Moderate","Highly loyal"]},{key:"innovationAdoption",label:"Innovation Adoption",type:"multi",options:["Laggard","Early majority","Early adopter","Innovator"]}]},
-  {key:"finance",icon:"💸",label:"Financial Behavior",fields:[{key:"paymentPref",label:"Payment Preference",type:"multi",options:["Cash","Card","Mobile wallet","BNPL"]},{key:"savingsBehavior",label:"Savings Behavior",type:"multi",options:["Spender","Balanced","Saver"]},{key:"subscriptionTolerance",label:"Subscription Tolerance",type:"multi",options:["None","Few","Many"]},{key:"discountResponse",label:"Discount Responsiveness",type:"multi",options:["Ignores","Occasional","Always seeks"]}]},
-  {key:"digital",icon:"📱",label:"Digital & Media",fields:[{key:"primaryDevice",label:"Primary Device",type:"multi",options:["Mobile-first","Desktop","Mixed"]},{key:"socialMediaUsage",label:"Social Media Usage",type:"multi",options:["None","Passive","Active","Creator"]},{key:"contentConsumption",label:"Content Consumption",type:"multi",options:["Short-form","Long-form","Video","Audio"]},{key:"onlineShopping",label:"Online Shopping",type:"multi",options:["Never","Monthly","Weekly","Daily"]}]},
-  {key:"purchase",icon:"🛍",label:"Purchase Behavior",fields:[{key:"researchDepth",label:"Research Depth",type:"multi",options:["None","Basic","Deep researcher"]},{key:"channelPref",label:"Channel Preference",type:"multi",options:["In-store","Online","Omnichannel"]},{key:"peerRecommendation",label:"Peer Recommendation Weight",type:"multi",options:["Low","Medium","High"]}]},
+const uid = () => Math.random().toString(36).slice(2,10);
+const nowStr = () => new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+const STATUS = {
+  draft:{color:"#888",bg:"rgba(136,136,136,0.1)",label:"Draft"},
+  active:{color:"#FF9500",bg:"rgba(255,149,0,0.1)",label:"Active"},
+  done:{color:"#34C759",bg:"rgba(52,199,89,0.1)",label:"Done"}
+};
+const LANGUAGES = [
+  {code:"auto",label:"Auto — match geo"},{code:"en",label:"English"},{code:"ar",label:"Arabic"},
+  {code:"fr",label:"French"},{code:"de",label:"German"},{code:"es",label:"Spanish"},
+  {code:"pt",label:"Portuguese"},{code:"ru",label:"Russian"},{code:"zh",label:"Chinese"},
+  {code:"ja",label:"Japanese"},{code:"tr",label:"Turkish"},{code:"hi",label:"Hindi"}
 ];
-const emptyPersona=()=>{const p={ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};PERSONA_GROUPS.forEach(g=>g.fields.forEach(f=>{if(f.type==="multi")p[f.key]=[];}));return p;};
-const COUNTRY_CITIES={
-  "Afghanistan":["Kabul","Kandahar","Herat"],"Albania":["Tirana","Durrës","Vlorë"],"Algeria":["Algiers","Oran","Constantine"],"Argentina":["Buenos Aires","Córdoba","Rosario","Mendoza"],"Australia":["Sydney","Melbourne","Brisbane","Perth","Adelaide","Canberra"],"Austria":["Vienna","Graz","Linz","Salzburg"],"Azerbaijan":["Baku","Ganja","Sumqayıt","Mingəçevir","Nakhchivan","Lənkəran","Şirvan","Yevlax","Xankəndi","Şəki"],"Bahrain":["Manama","Riffa","Muharraq"],"Bangladesh":["Dhaka","Chittagong","Sylhet","Rajshahi"],"Belgium":["Brussels","Antwerp","Ghent","Bruges"],"Brazil":["São Paulo","Rio de Janeiro","Brasília","Salvador","Fortaleza","Belo Horizonte","Curitiba"],"Canada":["Toronto","Montreal","Vancouver","Calgary","Edmonton","Ottawa","Winnipeg"],"Chile":["Santiago","Valparaíso","Concepción"],"China":["Beijing","Shanghai","Guangzhou","Shenzhen","Chengdu","Wuhan","Hangzhou","Nanjing"],"Colombia":["Bogotá","Medellín","Cali","Barranquilla"],"Czech Republic":["Prague","Brno","Ostrava","Plzeň"],"Denmark":["Copenhagen","Aarhus","Odense","Aalborg"],"Egypt":["Cairo","Alexandria","Giza","Port Said","Luxor","Aswan","Hurghada"],"Finland":["Helsinki","Espoo","Tampere","Oulu"],"France":["Paris","Marseille","Lyon","Toulouse","Nice","Nantes","Bordeaux"],"Germany":["Berlin","Hamburg","Munich","Cologne","Frankfurt","Stuttgart","Leipzig"],"Ghana":["Accra","Kumasi","Tamale"],"Greece":["Athens","Thessaloniki","Patras","Heraklion"],"Hungary":["Budapest","Debrecen","Miskolc","Pécs"],"India":["Mumbai","Delhi","Bengaluru","Hyderabad","Chennai","Kolkata","Pune","Ahmedabad","Jaipur","Lucknow"],"Indonesia":["Jakarta","Surabaya","Bandung","Medan","Makassar","Denpasar","Yogyakarta"],"Iran":["Tehran","Mashhad","Isfahan","Tabriz","Shiraz"],"Iraq":["Baghdad","Basra","Mosul","Erbil"],"Ireland":["Dublin","Cork","Limerick","Galway"],"Israel":["Tel Aviv","Jerusalem","Haifa","Beersheba"],"Italy":["Rome","Milan","Naples","Turin","Florence","Venice"],"Japan":["Tokyo","Osaka","Nagoya","Sapporo","Fukuoka","Kyoto"],"Jordan":["Amman","Zarqa","Irbid","Aqaba"],"Kazakhstan":["Almaty","Astana","Shymkent","Karaganda"],"Kenya":["Nairobi","Mombasa","Kisumu","Nakuru"],"Kuwait":["Kuwait City","Salmiya","Hawalli"],"Lebanon":["Beirut","Tripoli","Sidon"],"Malaysia":["Kuala Lumpur","George Town","Ipoh","Johor Bahru","Kota Kinabalu"],"Mexico":["Mexico City","Guadalajara","Monterrey","Puebla","Tijuana","Cancún"],"Morocco":["Casablanca","Rabat","Fes","Marrakech","Agadir","Tangier"],"Netherlands":["Amsterdam","Rotterdam","The Hague","Utrecht","Eindhoven"],"New Zealand":["Auckland","Wellington","Christchurch","Hamilton"],"Nigeria":["Lagos","Abuja","Kano","Ibadan","Port Harcourt","Kaduna"],"Norway":["Oslo","Bergen","Trondheim","Stavanger"],"Oman":["Muscat","Salalah","Sohar"],"Pakistan":["Karachi","Lahore","Faisalabad","Rawalpindi","Islamabad","Peshawar","Multan"],"Philippines":["Manila","Quezon City","Davao","Cebu City","Taguig"],"Poland":["Warsaw","Kraków","Łódź","Wrocław","Gdańsk"],"Portugal":["Lisbon","Porto","Braga","Coimbra"],"Qatar":["Doha","Al Rayyan","Al Wakrah","Lusail"],"Romania":["Bucharest","Cluj-Napoca","Timișoara","Iași"],"Russia":["Moscow","Saint Petersburg","Novosibirsk","Yekaterinburg","Kazan"],"Saudi Arabia":["Riyadh","Jeddah","Mecca","Medina","Dammam","Khobar","Abha"],"Singapore":["Singapore"],"South Africa":["Johannesburg","Cape Town","Durban","Pretoria"],"South Korea":["Seoul","Busan","Incheon","Daegu","Daejeon"],"Spain":["Madrid","Barcelona","Valencia","Seville","Zaragoza","Málaga"],"Sweden":["Stockholm","Gothenburg","Malmö","Uppsala"],"Switzerland":["Zurich","Geneva","Basel","Bern"],"Taiwan":["Taipei","Kaohsiung","Taichung","Tainan"],"Thailand":["Bangkok","Chiang Mai","Phuket","Pattaya"],"Tunisia":["Tunis","Sfax","Sousse"],"Turkey":["Istanbul","Ankara","Izmir","Bursa","Antalya","Adana","Gaziantep"],"UAE":["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Al Ain"],"UK":["London","Birmingham","Manchester","Leeds","Glasgow","Liverpool","Bristol","Edinburgh"],"Ukraine":["Kyiv","Kharkiv","Odessa","Dnipro","Lviv"],"USA":["New York","Los Angeles","Chicago","Houston","Phoenix","San Antonio","San Diego","Dallas","San Jose","Austin","San Francisco","Seattle","Denver","Washington DC","Miami","Atlanta","Boston"],"Uzbekistan":["Tashkent","Samarkand","Namangan","Andijan"],"Vietnam":["Ho Chi Minh City","Hanoi","Da Nang","Hai Phong"],"Zimbabwe":["Harare","Bulawayo","Chitungwiza"],
+const RESEARCH_GOALS = [
+  "Market Entry","Market Sizing","Growth Opportunities","Competitor Analysis",
+  "Consumer Segmentation","Brand Positioning","Product Validation","Pricing Strategy",
+  "Campaign Targeting","Investment Due Diligence","Customer Retention","New Category Discovery"
+];
+const TAGS_PRESET = ["AdTech","Agriculture","AI & ML","Automotive","B2B","B2C","Banking","Beauty & Personal Care","BioTech","Blockchain & Web3","CleanTech","Construction","Cybersecurity","E-commerce","EdTech","Education","Energy & Utilities","Fashion & Apparel","FMCG","FinTech","Food & Beverage","FoodTech","Gaming","Government & Public Sector","Healthcare","HealthTech","Hospitality & Tourism","HR & Recruitment","Insurance","Legal & Compliance","LegalTech","Logistics & Supply Chain","Manufacturing","MarTech","Media & Entertainment","MedTech","Non-Profit","Pharmaceuticals","PropTech","Real Estate","Retail","SaaS","SpaceTech","Sports & Fitness","Telecom","Travel"].sort((a,b)=>a.localeCompare(b));
+const PERSONA_GROUPS = [
+  {key:"core",icon:"👤",label:"Core Demographics",fields:[
+    {key:"ageMin",label:"Age Min",type:"input"},{key:"ageMax",label:"Age Max",type:"input"},
+    {key:"gender",label:"Gender",type:"select",options:["All","Male","Female","Non-binary"]},
+    {key:"incomeLevel",label:"Income Level",type:"select",options:["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"]},
+    {key:"education",label:"Education",type:"select",options:["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"]},
+    {key:"occupation",label:"Occupation",type:"select",options:["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"]},
+    {key:"familySize",label:"Family Size",type:"select",options:["Single","2","2–4","4+","Multi-generational"]},
+    {key:"lifestyle",label:"Lifestyle",type:"select",options:["Urban","Suburban","Rural","Nomadic","Mixed"]}
+  ]},
+  {key:"psych",icon:"🧠",label:"Psychological & Cognitive",fields:[
+    {key:"digitalSavviness",label:"Digital Savviness",type:"multi",options:["Low","Medium","High","Tech-native"]},
+    {key:"riskTolerance",label:"Risk Tolerance",type:"multi",options:["Averse","Cautious","Moderate","Aggressive"]},
+    {key:"decisionMaking",label:"Decision-Making Style",type:"multi",options:["Impulsive","Deliberate","Influence-driven"]},
+    {key:"brandLoyalty",label:"Brand Loyalty",type:"multi",options:["Switcher","Moderate","Highly loyal"]},
+    {key:"innovationAdoption",label:"Innovation Adoption",type:"multi",options:["Laggard","Early majority","Early adopter","Innovator"]}
+  ]},
+  {key:"finance",icon:"💸",label:"Financial Behavior",fields:[
+    {key:"paymentPref",label:"Payment Preference",type:"multi",options:["Cash","Card","Mobile wallet","BNPL"]},
+    {key:"savingsBehavior",label:"Savings Behavior",type:"multi",options:["Spender","Balanced","Saver"]},
+    {key:"subscriptionTolerance",label:"Subscription Tolerance",type:"multi",options:["None","Few","Many"]},
+    {key:"discountResponse",label:"Discount Responsiveness",type:"multi",options:["Ignores","Occasional","Always seeks"]}
+  ]},
+  {key:"digital",icon:"📱",label:"Digital & Media",fields:[
+    {key:"primaryDevice",label:"Primary Device",type:"multi",options:["Mobile-first","Desktop","Mixed"]},
+    {key:"socialMediaUsage",label:"Social Media Usage",type:"multi",options:["None","Passive","Active","Creator"]},
+    {key:"contentConsumption",label:"Content Consumption",type:"multi",options:["Short-form","Long-form","Video","Audio"]},
+    {key:"onlineShopping",label:"Online Shopping",type:"multi",options:["Never","Monthly","Weekly","Daily"]}
+  ]},
+  {key:"purchase",icon:"🛍",label:"Purchase Behavior",fields:[
+    {key:"researchDepth",label:"Research Depth",type:"multi",options:["None","Basic","Deep researcher"]},
+    {key:"channelPref",label:"Channel Preference",type:"multi",options:["In-store","Online","Omnichannel"]},
+    {key:"peerRecommendation",label:"Peer Recommendation Weight",type:"multi",options:["Low","Medium","High"]}
+  ]}
+];
+const emptyPersona = () => {
+  const p = {ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};
+  PERSONA_GROUPS.forEach(g => g.fields.forEach(f => { if(f.type==="multi") p[f.key]=[]; }));
+  return p;
 };
-const ALL_COUNTRIES=Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
-const emptyRForm=()=>({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
+const COUNTRY_CITIES = {
+  "Afghanistan":["Kabul","Kandahar","Herat"],"Albania":["Tirana","Durrës","Vlorë"],"Algeria":["Algiers","Oran","Constantine"],
+  "Argentina":["Buenos Aires","Córdoba","Rosario","Mendoza"],"Australia":["Sydney","Melbourne","Brisbane","Perth","Adelaide","Canberra"],
+  "Austria":["Vienna","Graz","Linz","Salzburg"],"Azerbaijan":["Baku","Ganja","Sumqayıt","Mingəçevir","Nakhchivan","Lənkəran","Şirvan","Yevlax","Xankəndi","Şəki"],
+  "Bahrain":["Manama","Riffa","Muharraq"],"Bangladesh":["Dhaka","Chittagong","Sylhet","Rajshahi"],
+  "Belgium":["Brussels","Antwerp","Ghent","Bruges"],"Brazil":["São Paulo","Rio de Janeiro","Brasília","Salvador","Fortaleza","Belo Horizonte","Curitiba"],
+  "Canada":["Toronto","Montreal","Vancouver","Calgary","Edmonton","Ottawa","Winnipeg"],
+  "Chile":["Santiago","Valparaíso","Concepción"],"China":["Beijing","Shanghai","Guangzhou","Shenzhen","Chengdu","Wuhan","Hangzhou","Nanjing"],
+  "Colombia":["Bogotá","Medellín","Cali","Barranquilla"],"Czech Republic":["Prague","Brno","Ostrava","Plzeň"],
+  "Denmark":["Copenhagen","Aarhus","Odense","Aalborg"],"Egypt":["Cairo","Alexandria","Giza","Port Said","Luxor","Aswan","Hurghada"],
+  "Finland":["Helsinki","Espoo","Tampere","Oulu"],"France":["Paris","Marseille","Lyon","Toulouse","Nice","Nantes","Bordeaux"],
+  "Germany":["Berlin","Hamburg","Munich","Cologne","Frankfurt","Stuttgart","Leipzig"],
+  "Ghana":["Accra","Kumasi","Tamale"],"Greece":["Athens","Thessaloniki","Patras","Heraklion"],
+  "Hungary":["Budapest","Debrecen","Miskolc","Pécs"],"India":["Mumbai","Delhi","Bengaluru","Hyderabad","Chennai","Kolkata","Pune","Ahmedabad","Jaipur","Lucknow"],
+  "Indonesia":["Jakarta","Surabaya","Bandung","Medan","Makassar","Denpasar","Yogyakarta"],
+  "Iran":["Tehran","Mashhad","Isfahan","Tabriz","Shiraz"],"Iraq":["Baghdad","Basra","Mosul","Erbil"],
+  "Ireland":["Dublin","Cork","Limerick","Galway"],"Israel":["Tel Aviv","Jerusalem","Haifa","Beersheba"],
+  "Italy":["Rome","Milan","Naples","Turin","Florence","Venice"],"Japan":["Tokyo","Osaka","Nagoya","Sapporo","Fukuoka","Kyoto"],
+  "Jordan":["Amman","Zarqa","Irbid","Aqaba"],"Kazakhstan":["Almaty","Astana","Shymkent","Karaganda"],
+  "Kenya":["Nairobi","Mombasa","Kisumu","Nakuru"],"Kuwait":["Kuwait City","Salmiya","Hawalli"],
+  "Lebanon":["Beirut","Tripoli","Sidon"],"Malaysia":["Kuala Lumpur","George Town","Ipoh","Johor Bahru","Kota Kinabalu"],
+  "Mexico":["Mexico City","Guadalajara","Monterrey","Puebla","Tijuana","Cancún"],
+  "Morocco":["Casablanca","Rabat","Fes","Marrakech","Agadir","Tangier"],
+  "Netherlands":["Amsterdam","Rotterdam","The Hague","Utrecht","Eindhoven"],
+  "New Zealand":["Auckland","Wellington","Christchurch","Hamilton"],
+  "Nigeria":["Lagos","Abuja","Kano","Ibadan","Port Harcourt","Kaduna"],
+  "Norway":["Oslo","Bergen","Trondheim","Stavanger"],"Oman":["Muscat","Salalah","Sohar"],
+  "Pakistan":["Karachi","Lahore","Faisalabad","Rawalpindi","Islamabad","Peshawar","Multan"],
+  "Philippines":["Manila","Quezon City","Davao","Cebu City","Taguig"],
+  "Poland":["Warsaw","Kraków","Łódź","Wrocław","Gdańsk"],"Portugal":["Lisbon","Porto","Braga","Coimbra"],
+  "Qatar":["Doha","Al Rayyan","Al Wakrah","Lusail"],"Romania":["Bucharest","Cluj-Napoca","Timișoara","Iași"],
+  "Russia":["Moscow","Saint Petersburg","Novosibirsk","Yekaterinburg","Kazan"],
+  "Saudi Arabia":["Riyadh","Jeddah","Mecca","Medina","Dammam","Khobar","Abha"],
+  "Singapore":["Singapore"],"South Africa":["Johannesburg","Cape Town","Durban","Pretoria"],
+  "South Korea":["Seoul","Busan","Incheon","Daegu","Daejeon"],
+  "Spain":["Madrid","Barcelona","Valencia","Seville","Zaragoza","Málaga"],
+  "Sweden":["Stockholm","Gothenburg","Malmö","Uppsala"],"Switzerland":["Zurich","Geneva","Basel","Bern"],
+  "Taiwan":["Taipei","Kaohsiung","Taichung","Tainan"],"Thailand":["Bangkok","Chiang Mai","Phuket","Pattaya"],
+  "Tunisia":["Tunis","Sfax","Sousse"],"Turkey":["Istanbul","Ankara","Izmir","Bursa","Antalya","Adana","Gaziantep"],
+  "UAE":["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Al Ain"],
+  "UK":["London","Birmingham","Manchester","Leeds","Glasgow","Liverpool","Bristol","Edinburgh"],
+  "Ukraine":["Kyiv","Kharkiv","Odessa","Dnipro","Lviv"],
+  "USA":["New York","Los Angeles","Chicago","Houston","Phoenix","San Antonio","San Diego","Dallas","San Jose","Austin","San Francisco","Seattle","Denver","Washington DC","Miami","Atlanta","Boston"],
+  "Uzbekistan":["Tashkent","Samarkand","Namangan","Andijan"],
+  "Vietnam":["Ho Chi Minh City","Hanoi","Da Nang","Hai Phong"],
+  "Zimbabwe":["Harare","Bulawayo","Chitungwiza"]
+};
+const ALL_COUNTRIES = Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
+const emptyRForm = () => ({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
 
-// Storage
-const loadP=async()=>{try{const r=await window.storage.get(STORAGE_KEY);return r?JSON.parse(r.value):[];}catch(_){return[];}};
-const saveP=async(list)=>{try{await window.storage.set(STORAGE_KEY,JSON.stringify(list));}catch(_){}};
-
-// Verified data fetcher
-const fetchVerifiedData=async(form,onProgress)=>{
-  const country=form.geo.country.trim();
-  const results={worldBank:{},restCountries:{},exchangeRate:{},fetchedAt:new Date().toISOString()};
-  try{onProgress("Fetching country profile…");const res=await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fullText=false&fields=name,capital,region,subregion,population,area,languages,currencies,cca2,cca3`);if(res.ok){const data=await res.json();const c=data[0];results.restCountries={name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),currencies:Object.entries(c.currencies||{}).map(([k,v])=>`${v.name} (${v.symbol||k})`),cca3:c.cca3};}}catch(e){results.restCountries.error=e.message;}
-  const ISO=results.restCountries?.cca3||country.slice(0,3).toUpperCase();
-  const WB=[["NY.GDP.MKTP.CD","GDP (current USD)"],["NY.GDP.PCAP.CD","GDP per capita"],["FP.CPI.TOTL.ZG","Inflation (%)"],["SP.URB.TOTL.IN.ZS","Urban population (%)"],["IT.NET.USER.ZS","Internet users (%)"],["SP.POP.TOTL","Total population"],["SL.UEM.TOTL.ZS","Unemployment (%)"]];
-  try{onProgress("Fetching World Bank indicators…");const wbR=await Promise.all(WB.map(([code])=>fetch(`https://api.worldbank.org/v2/country/${ISO}/indicator/${code}?format=json&mrv=3&per_page=3`).then(r=>r.ok?r.json():null).catch(()=>null)));const wb={};wbR.forEach((data,i)=>{if(!data||!data[1])return;const[code,label]=WB[i];const entries=data[1].filter(d=>d.value!==null);if(entries.length>0)wb[code]={label,value:entries[0].value,year:entries[0].date};});results.worldBank=wb;}catch(e){results.worldBank.error=e.message;}
-  try{onProgress("Fetching exchange rates…");const fxRes=await fetch(`https://open.er-api.com/v6/latest/USD`);if(fxRes.ok){const fx=await fxRes.json();results.exchangeRate={base:"USD",lastUpdate:fx.time_last_update_utc};}}catch(e){results.exchangeRate.error=e.message;}
-  onProgress("Structuring verified context…");return results;
+// ── VERIFIED DATA FETCHER ────────────────────────────────────────────────────
+const fetchVerifiedData = async (form, onProgress) => {
+  const country = form.geo.country.trim();
+  const results = {worldBank:{},restCountries:{},exchangeRate:{},fetchedAt:new Date().toISOString()};
+  try {
+    onProgress("Fetching country profile…");
+    const res = await fetch("https://restcountries.com/v3.1/name/"+encodeURIComponent(country)+"?fullText=false&fields=name,capital,region,subregion,population,area,languages,currencies,cca2,cca3");
+    if (res.ok) {
+      const data = await res.json(); const c = data[0];
+      results.restCountries = {name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),currencies:Object.entries(c.currencies||{}).map(([k,v])=>v.name+" ("+( v.symbol||k)+")"),cca3:c.cca3};
+    }
+  } catch(e) { results.restCountries.error = e.message; }
+  const ISO = results.restCountries?.cca3 || country.slice(0,3).toUpperCase();
+  const WB = [["NY.GDP.MKTP.CD","GDP (current USD)"],["NY.GDP.PCAP.CD","GDP per capita"],["FP.CPI.TOTL.ZG","Inflation (%)"],["SP.URB.TOTL.IN.ZS","Urban population (%)"],["IT.NET.USER.ZS","Internet users (%)"],["SP.POP.TOTL","Total population"],["SL.UEM.TOTL.ZS","Unemployment (%)"]];
+  try {
+    onProgress("Fetching World Bank indicators…");
+    const wbR = await Promise.all(WB.map(([code])=>fetch("https://api.worldbank.org/v2/country/"+ISO+"/indicator/"+code+"?format=json&mrv=3&per_page=3").then(r=>r.ok?r.json():null).catch(()=>null)));
+    const wb = {};
+    wbR.forEach((data,i)=>{if(!data||!data[1])return;const[code,label]=WB[i];const entries=data[1].filter(d=>d.value!==null);if(entries.length>0)wb[code]={label,value:entries[0].value,year:entries[0].date};});
+    results.worldBank = wb;
+  } catch(e) { results.worldBank.error = e.message; }
+  try {
+    onProgress("Fetching exchange rates…");
+    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (fxRes.ok) { const fx = await fxRes.json(); results.exchangeRate = {base:"USD",lastUpdate:fx.time_last_update_utc}; }
+  } catch(e) { results.exchangeRate.error = e.message; }
+  onProgress("Structuring verified context…");
+  return results;
 };
 
-// Build prompt
-const buildPrompt=(f,verifiedData=null)=>{
-  const lang=f.language==="auto"?`Detect the primary local language of ${f.geo.country} and write ALL prose in that language. Keep JSON keys in English.`:f.language==="en"?"Write all prose in English.":`Write ALL prose in language code "${f.language}". Keep JSON keys in English.`;
-  const p=f.persona;
-  const geoStr=`${f.geo.country}${f.geo.cities?.length?", "+f.geo.cities.join(" / "):""}`;
-  const multiLines=PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?`${field.label}: ${vals.join(", ")}`:null;})).filter(Boolean).join(" | ");
-  if(f.tier===1)return{prompt:`You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n${lang}\nSchema (return ONLY this JSON, no markdown fences):\n{"tier":1,"language":"<language name>","searchedSources":[],"dataProviders":[],"archetypes":[{"name":"string","description":"3-4 rich sentences","traits":["4-6 labels"],"sharePercent":<int>}],"insights":"400-500 word prose","opportunities":"300-400 word prose","solutions":"350-450 word prose"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\nGeo: ${geoStr} | Goal: ${f.researchGoal||"Market discovery"} | Audience: ${f.numberOfPeople||"unspecified"}\nPersona: Age ${p.ageMin}–${p.ageMax} | ${p.gender} | ${p.incomeLevel} | ${p.education} | ${p.occupation}\nExtended: ${multiLines||"None"}`,useWebSearch:false};
-  if(f.tier===2)return{prompt:`You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. "${f.geo.country} consumer market size 2024 2025"\n2. "${geoStr} consumer behavior trends 2024"\n3. "${f.geo.country} market competitors landscape 2024"\n4. "${f.geo.country} economic indicators GDP 2024 2025"\n5. "${p.ageMin}–${p.ageMax} age ${f.geo.country} ${f.researchGoal||"consumer"} trends"\n${lang}\nSchema (return ONLY this JSON, no markdown fences):\n{"tier":2,"language":"<language name>","searchedSources":["<up to 8 real sources>"],"dataProviders":[],"archetypes":[{"name":"string","description":"3-4 rich sentences with real data","traits":["4-6 labels"],"sharePercent":<int>}],"insights":"450-550 word prose","opportunities":"350-450 word prose","solutions":"400-500 word prose"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\nGeo: ${geoStr} | Goal: ${f.researchGoal||"Market discovery"} | Audience: ${f.numberOfPeople||"unspecified"}\nPersona: Age ${p.ageMin}–${p.ageMax} | ${p.gender} | ${p.incomeLevel} | ${p.education} | ${p.occupation}\nExtended: ${multiLines||"None"}`,useWebSearch:true};
-  const buildVC=(vd)=>{if(!vd)return"";const lines=[];const rc=vd.restCountries||{};if(rc.name)lines.push(`Country: ${rc.name} | Capital: ${rc.capital} | Region: ${rc.region}`);if(rc.population)lines.push(`Population: ${Number(rc.population).toLocaleString()}`);const wb=vd.worldBank||{};const wbF=Object.values(wb).filter(v=>v&&v.value!=null).map(v=>`${v.label}: ${typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value} (${v.year})`);if(wbF.length)lines.push("World Bank:\n  "+wbF.join("\n  "));return lines.join("\n");};
-  return{prompt:`You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n${buildVC(verifiedData)}\n═══════════════════\nREQUIRED SEARCHES:\n1. "${f.geo.country} consumer market size 2024 2025"\n2. "${f.geo.country} top companies market share 2024"\n3. "${f.geo.country} consumer spending patterns latest"\n4. "${f.geo.country} investment opportunities growth forecast"\n${lang}\nSchema (return ONLY this JSON, no markdown fences):\n{"tier":3,"language":"<language name>","searchedSources":["<up to 10 sources>"],"dataProviders":["World Bank","REST Countries","Open Exchange"],"verifiedStats":[{"label":"string","value":"string","source":"string","year":"string"}],"archetypes":[{"name":"string","description":"4-5 rich sentences citing verified data","traits":["5-7 labels"],"sharePercent":<int>}],"insights":"550-650 word prose","opportunities":"400-500 word prose","solutions":"450-550 word prose"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists.\nGeo: ${geoStr} | Goal: ${f.researchGoal||"Market discovery"} | Audience: ${f.numberOfPeople||"unspecified"}\nPersona: Age ${p.ageMin}–${p.ageMax} | ${p.gender} | ${p.incomeLevel} | ${p.education} | ${p.occupation}\nExtended: ${multiLines||"None"}`,useWebSearch:true};
+// ── BUILD PROMPT ─────────────────────────────────────────────────────────────
+const buildPrompt = (f, verifiedData) => {
+  const lang = f.language==="auto" ? "Detect the primary local language of "+f.geo.country+" and write ALL prose in that language. Keep JSON keys in English." : f.language==="en" ? "Write all prose in English." : "Write ALL prose in language code \""+f.language+"\". Keep JSON keys in English.";
+  const p = f.persona;
+  const geoStr = f.geo.country + (f.geo.cities?.length ? ", "+f.geo.cities.join(" / ") : "");
+  const multiLines = PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?field.label+": "+vals.join(", "):null;})).filter(Boolean).join(" | ");
+  const baseInputs = "Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
+  if (f.tier===1) return {prompt:"You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":1,\"language\":\"<language name>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\",\"solutions\":\"350-450 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:false};
+  if (f.tier===2) return {prompt:"You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":2,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 8 real sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\",\"solutions\":\"400-500 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:true};
+  const buildVC = (vd) => {
+    if (!vd) return "";
+    const lines = []; const rc = vd.restCountries||{};
+    if (rc.name) lines.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);
+    if (rc.population) lines.push("Population: "+Number(rc.population).toLocaleString());
+    const wb = vd.worldBank||{}; const wbF = Object.values(wb).filter(v=>v&&v.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");
+    if (wbF.length) lines.push("World Bank:\n  "+wbF.join("\n  "));
+    return lines.join("\n");
+  };
+  return {prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":3,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 rich sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\",\"solutions\":\"450-550 word prose\"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:true};
 };
 
-// PDF export
-const triggerPDF=(run,projName)=>{
-  const r=run.results,geo=`${run.geo.country}${run.geo.cities?.length?", "+run.geo.cities[0]:""}`,tier=TIERS[run.tier||2];
-  const archHTML=(r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return`<div style="background:#111;border-radius:12px;padding:18px;border-left:4px solid ${c};margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><strong style="font-size:13px;color:#fff;flex:1">${a.name}</strong><span style="font-size:12px;font-weight:700;color:${c}">${pct}%</span></div><p style="font-size:12px;color:#888;line-height:1.6;margin-bottom:10px">${a.description}</p><div style="display:flex;flex-wrap:wrap;gap:4px">${(a.traits||[]).map(t=>`<span style="font-size:10px;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;color:#ccc">${t}</span>`).join("")}</div></div>`;}).join("");
-  const prose=t=>(t||"").replace(/\n\n/g,"</p><p style='margin-top:12px'>").replace(/\n/g," ");
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#000;color:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div style="padding:64px;background:#000;min-height:100vh;page-break-after:always"><div style="font-size:14px;font-weight:800;color:#FF9500;margin-bottom:40px">● ResearchLens</div><div style="font-size:56px;font-weight:900;line-height:1.0;letter-spacing:-2px;margin-bottom:20px">${run.name||"Research Report"}<br><span style="color:#FF9500">${geo}.</span></div><div style="font-size:16px;color:#888;margin-bottom:40px">${run.persona.ageMin}–${run.persona.ageMax} yrs · ${run.persona.incomeLevel}</div><div style="display:flex;gap:40px">${[["Project",projName||"—"],["Geography",geo],["Date",run.createdAt],["Tier",`Tier ${run.tier||2} — ${tier.label}`]].map(([l,v])=>`<div><div style="font-size:9px;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${l}</div><div style="font-size:14px;color:#fff;font-weight:600">${v}</div></div>`).join("")}</div></div>${[["🎭","Archetypes",archHTML],["🔍","Insights",`<p style="font-size:13.5px;line-height:1.8;color:#aaa">${prose(r.insights)}</p>`],["🚀","Opportunities",`<p style="font-size:13.5px;line-height:1.8;color:#aaa">${prose(r.opportunities)}</p>`],["💡","Solutions",`<p style="font-size:13.5px;line-height:1.8;color:#aaa">${prose(r.solutions)}</p>`]].map(([icon,title,body])=>`<div style="padding:52px 64px;background:#000;page-break-after:always"><div style="font-size:28px;font-weight:900;margin-bottom:32px;color:#fff">${icon} ${title}</div>${body}</div>`).join("")}</body></html>`;
-  const w=window.open("","_blank");w.document.write(html);w.document.close();w.onload=()=>{w.focus();w.print();};
+// ── PDF ───────────────────────────────────────────────────────────────────────
+const triggerPDF = (run, projName) => {
+  const r = run.results, geo = run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:""), tier = TIERS[run.tier||2];
+  const archHTML = (r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return "<div style='background:#111;border-radius:12px;padding:18px;border-left:4px solid "+c+";margin-bottom:14px'><div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'><strong style='font-size:13px;color:#fff;flex:1'>"+a.name+"</strong><span style='font-size:12px;font-weight:700;color:"+c+"'>"+pct+"%</span></div><p style='font-size:12px;color:#888;line-height:1.6;margin-bottom:10px'>"+a.description+"</p><div style='display:flex;flex-wrap:wrap;gap:4px'>"+(a.traits||[]).map(t=>"<span style='font-size:10px;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;color:#ccc'>"+t+"</span>").join("")+"</div></div>";}).join("");
+  const prose = t => (t||"").replace(/\n\n/g,"</p><p style='margin-top:12px'>").replace(/\n/g," ");
+  const html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#000;color:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div style='padding:64px;background:#000;min-height:100vh;page-break-after:always'><div style='font-size:14px;font-weight:800;color:#FF9500;margin-bottom:40px'>● ResearchLens</div><div style='font-size:56px;font-weight:900;line-height:1.0;letter-spacing:-2px;margin-bottom:20px'>"+(run.name||"Research Report")+"<br><span style='color:#FF9500'>"+geo+".</span></div><div style='font-size:16px;color:#888;margin-bottom:40px'>"+run.persona.ageMin+"–"+run.persona.ageMax+" yrs · "+run.persona.incomeLevel+"</div><div style='display:flex;gap:40px'>"+ [["Project",projName||"—"],["Geography",geo],["Date",run.createdAt],["Tier","Tier "+(run.tier||2)+" — "+tier.label]].map(([l,v])=>"<div><div style='font-size:9px;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px'>"+l+"</div><div style='font-size:14px;color:#fff;font-weight:600'>"+v+"</div></div>").join("")+"</div></div>"+[["🎭","Archetypes",archHTML],["🔍","Insights","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.insights)+"</p>"],["🚀","Opportunities","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.opportunities)+"</p>"],["💡","Solutions","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.solutions)+"</p>"]].map(([icon,title,body])=>"<div style='padding:52px 64px;background:#000;page-break-after:always'><div style='font-size:28px;font-weight:900;margin-bottom:32px;color:#fff'>"+icon+" "+title+"</div>"+body+"</div>").join("")+"</body></html>";
+  const w = window.open("","_blank"); w.document.write(html); w.document.close(); w.onload = () => { w.focus(); w.print(); };
 };
 
-// CSS helpers
-const css={
+// ── BASE STYLES ───────────────────────────────────────────────────────────────
+const css = {
   page:{minHeight:"100vh",background:"#000",color:"#fff"},
   card:{background:"#111",border:"1px solid #222",borderRadius:16},
-  input:{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,padding:"11px 14px",fontSize:14,color:"#fff",outline:"none",boxSizing:"border-box"},
-  label:{display:"block",fontSize:12,color:"#666",marginBottom:6,fontWeight:500},
+  inp:{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,padding:"11px 14px",fontSize:14,color:"#fff",outline:"none",boxSizing:"border-box"},
+  lbl:{display:"block",fontSize:12,color:"#666",marginBottom:6,fontWeight:500}
 };
 
-// UI Components
-function Input({label,value,onChange,placeholder,type="text",min,rows}){
-  const[f,setF]=useState(false);
-  const s={...css.input,borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none",resize:rows?"none":undefined};
-  if(rows)return React.createElement("div",null,label&&React.createElement("label",{style:css.label},label),React.createElement("textarea",{value,onChange,placeholder,rows,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
-  return React.createElement("div",null,label&&React.createElement("label",{style:css.label},label),React.createElement("input",{type,min,value,onChange,placeholder,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
+// ── UI COMPONENTS ─────────────────────────────────────────────────────────────
+function Inp({label,value,onChange,placeholder,type="text",min,rows}) {
+  const [f,setF] = useState(false);
+  const s = {...css.inp, borderColor:f?"#FF9500":"#222", boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none", resize:rows?"none":undefined};
+  if (rows) return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("textarea",{value,onChange,placeholder,rows,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
+  return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("input",{type,min,value,onChange,placeholder,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
 }
-function Sel({label,value,onChange,children}){
-  const[f,setF]=useState(false);
-  return React.createElement("div",null,label&&React.createElement("label",{style:css.label},label),React.createElement("select",{value,onChange,onFocus:()=>setF(true),onBlur:()=>setF(false),style:{...css.input,appearance:"none",cursor:"pointer",borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},children));
+function Sel({label,value,onChange,children}) {
+  const [f,setF] = useState(false);
+  return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("select",{value,onChange,onFocus:()=>setF(true),onBlur:()=>setF(false),style:{...css.inp,appearance:"none",cursor:"pointer",borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},children));
 }
-function PBtn({onClick,children,disabled,style={}}){
-  const[h,setH]=useState(false);
+function PBtn({onClick,children,disabled,style={}}) {
+  const [h,setH] = useState(false);
   return React.createElement("button",{onClick,disabled,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{background:h&&!disabled?"#FFB340":"#FF9500",border:"none",borderRadius:10,padding:"11px 22px",fontSize:14,fontWeight:700,color:"#000",cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,transition:"all .15s",...style}},children);
 }
-function GBtn({onClick,children,style={}}){
-  const[h,setH]=useState(false);
-  return React.createElement("button",{onClick,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{background:"transparent",border:`1px solid ${h?"#444":"#222"}`,borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:500,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",...style}},children);
+function GBtn({onClick,children,style={}}) {
+  const [h,setH] = useState(false);
+  return React.createElement("button",{onClick,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{background:"transparent",border:"1px solid "+(h?"#444":"#222"),borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:500,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",...style}},children);
 }
-function Pill({label,value,onRemove}){
+function Pill({label,value,onRemove}) {
   return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:4,background:"#111",border:"1px solid #222",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#888"}},
-    value?React.createElement(React.Fragment,null,React.createElement("span",{style:{color:"#FF9500",fontWeight:600}},label+": "),value):label,
-    onRemove&&React.createElement("button",{onClick:onRemove,style:{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"},onMouseEnter:e=>e.currentTarget.style.color="#FF3B30",onMouseLeave:e=>e.currentTarget.style.color="#444"},"×")
+    value ? React.createElement(React.Fragment,null, React.createElement("span",{style:{color:"#FF9500",fontWeight:600}},label+": "), value) : label,
+    onRemove && React.createElement("button",{onClick:onRemove,style:{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"},onMouseEnter:e=>e.currentTarget.style.color="#FF3B30",onMouseLeave:e=>e.currentTarget.style.color="#444"},"×")
   );
 }
-function SBadge({status}){const s=STATUS[status]||STATUS.draft;return React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:`1px solid ${s.color}30`,textTransform:"capitalize"}},s.label);}
-function Dots(){return React.createElement("span",{style:{display:"inline-flex",gap:3,marginLeft:6}},[0,1,2].map(i=>React.createElement("span",{key:i,style:{width:5,height:5,borderRadius:"50%",background:"#FF9500",display:"inline-block",animation:"rl-bounce .8s infinite",animationDelay:`${i*0.15}s`}})));}
-function Divider(){return React.createElement("div",{style:{height:1,background:"#1a1a1a"}});}
-function FCard({icon,title,children}){
+function SBadge({status}) {
+  const s = STATUS[status]||STATUS.draft;
+  return React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.color+"30",textTransform:"capitalize"}},s.label);
+}
+function Dots() {
+  return React.createElement("span",{style:{display:"inline-flex",gap:3,marginLeft:6}},
+    [0,1,2].map(i=>React.createElement("span",{key:i,style:{width:5,height:5,borderRadius:"50%",background:"#FF9500",display:"inline-block",animation:"rl-bounce .8s infinite",animationDelay:i*0.15+"s"}}))
+  );
+}
+function FCard({icon,title,children}) {
   return React.createElement("div",{style:{...css.card,padding:24,marginBottom:14}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:18}},React.createElement("span",{style:{fontSize:14}},icon),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},title)),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:18}}, React.createElement("span",{style:{fontSize:14}},icon), React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},title)),
     children
   );
 }
-function Row({cols=2,gap=12,mb=14,children}){return React.createElement("div",{style:{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap,marginBottom:mb}},children);}
-function Collapsible({icon,title,badge,children,defaultOpen=true}){
-  const[open,setOpen]=useState(defaultOpen);
+function Row({cols=2,gap=12,mb=14,children}) {
+  return React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat("+cols+",1fr)",gap,marginBottom:mb}},children);
+}
+function Collapsible({icon,title,badge,children,defaultOpen=true}) {
+  const [open,setOpen] = useState(defaultOpen);
   return React.createElement("div",{style:{...css.card,overflow:"hidden",marginBottom:14}},
     React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:14}},icon),React.createElement("span",{style:{fontSize:13,fontWeight:600}},title),badge&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("span",{style:{fontSize:14}},icon),
+        React.createElement("span",{style:{fontSize:13,fontWeight:600}},title),
+        badge && React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)
+      ),
       React.createElement("span",{style:{fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
     ),
-    open&&React.createElement(React.Fragment,null,React.createElement(Divider),React.createElement("div",{style:{padding:20}},children))
+    open && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
+      React.createElement("div",{style:{padding:20}},children)
+    )
   );
 }
-function Toast({toast}){
-  if(!toast)return null;
-  return React.createElement("div",{style:{position:"fixed",top:16,right:16,zIndex:999,background:"#111",border:`1px solid ${toast.type==="warn"?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.4)"}`,borderRadius:12,padding:"12px 18px",fontSize:13,color:"#fff",boxShadow:"0 8px 32px rgba(0,0,0,0.8)",fontWeight:500}},toast.msg);
+function Toast({toast}) {
+  if (!toast) return null;
+  return React.createElement("div",{style:{position:"fixed",top:16,right:16,zIndex:999,background:"#111",border:"1px solid "+(toast.type==="warn"?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.4)"),borderRadius:12,padding:"12px 18px",fontSize:13,color:"#fff",boxShadow:"0 8px 32px rgba(0,0,0,0.8)",fontWeight:500}},toast.msg);
+}
+function Header({back,backLabel,title,right}) {
+  const [h,setH] = useState(false);
+  return React.createElement("div",{style:{position:"sticky",top:0,zIndex:20,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #1a1a1a",padding:"0 28px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,minWidth:0}},
+      back ? React.createElement("button",{onClick:back,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"1px solid "+(h?"#333":"#1a1a1a"),borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s"}},"← "+backLabel)
+      : React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexShrink:0}},
+          React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}},"●"),
+          React.createElement("span",{style:{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}},"ResearchLens")
+        ),
+      title && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        React.createElement("span",{style:{width:3,height:3,borderRadius:"50%",background:"#333"}}),
+        React.createElement("span",{style:{fontSize:13,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},title)
+      )
+    ),
+    right && React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},right)
+  );
 }
 
-// Country Dropdown
-function CountryDD({value,onChange}){
-  const[open,setOpen]=useState(false);const[search,setSearch]=useState("");const ref=useRef(null);
-  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
-  const filtered=ALL_COUNTRIES.filter(c=>c.toLowerCase().includes(search.toLowerCase()));
+// ── COUNTRY / CITY DROPDOWNS ──────────────────────────────────────────────────
+function CountryDD({value,onChange}) {
+  const [open,setOpen] = useState(false); const [search,setSearch] = useState(""); const ref = useRef(null);
+  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
+  const filtered = ALL_COUNTRIES.filter(c=>c.toLowerCase().includes(search.toLowerCase()));
   return React.createElement("div",{ref,style:{position:"relative"}},
-    React.createElement("label",{style:css.label},"Country *"),
-    React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.input,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},
+    React.createElement("label",{style:css.lbl},"Country *"),
+    React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.inp,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},
       React.createElement("span",{style:{color:value?"#fff":"#444"}},value||"Select country…"),
       React.createElement("span",{style:{fontSize:10,color:"#444"}},"▼")
     ),
-    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:280}},
-      React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search country…",style:{...css.input,padding:"7px 10px",fontSize:12}})),
+    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:280}},
+      React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},
+        React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search country…",style:{...css.inp,padding:"7px 10px",fontSize:12}})
+      ),
       React.createElement("div",{style:{overflowY:"auto",flex:1}},
         filtered.map(c=>React.createElement("button",{key:c,onClick:()=>{onChange(c);setSearch("");setOpen(false);},style:{width:"100%",padding:"9px 14px",background:c===value?"rgba(255,149,0,0.08)":"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:c===value?"#FF9500":"#fff",fontWeight:c===value?700:400},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background=c===value?"rgba(255,149,0,0.08)":"transparent"},c)),
-        filtered.length===0&&React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},"No results")
+        filtered.length===0 && React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},"No results")
+      )
+    )
+  );
+}
+function CityMS({country,value=[],onChange}) {
+  const [open,setOpen] = useState(false); const [search,setSearch] = useState(""); const ref = useRef(null);
+  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
+  const cities = COUNTRY_CITIES[country]||[];
+  const filtered = cities.filter(c=>c.toLowerCase().includes(search.toLowerCase())&&!value.includes(c));
+  const toggle = c => onChange(value.includes(c)?value.filter(x=>x!==c):[...value,c]);
+  if (!country) return React.createElement("div",null, React.createElement("label",{style:css.lbl},"Cities"), React.createElement("div",{style:{...css.inp,color:"#333",cursor:"not-allowed"}},"Select a country first…"));
+  return React.createElement("div",{ref,style:{position:"relative"}},
+    React.createElement("label",{style:css.lbl},"Cities ", React.createElement("span",{style:{color:"#444",fontWeight:400}},"(multi)")),
+    React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.inp,minHeight:44,height:"auto",display:"flex",flexWrap:"wrap",gap:4,alignItems:"center",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none",padding:"6px 10px"}},
+      value.length>0 ? value.map(c=>React.createElement("span",{key:c,style:{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600},onClick:e=>{e.stopPropagation();toggle(c);}},c," ",React.createElement("span",{style:{fontSize:11,cursor:"pointer",opacity:0.6}},"×")))
+      : React.createElement("span",{style:{fontSize:13,color:"#444"}},"Select cities…"),
+      React.createElement("span",{style:{marginLeft:"auto",fontSize:10,color:"#444",flexShrink:0}},"▼")
+    ),
+    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:240}},
+      React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},
+        React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search city…",style:{...css.inp,padding:"7px 10px",fontSize:12}})
+      ),
+      React.createElement("div",{style:{overflowY:"auto",flex:1}},
+        filtered.map(c=>React.createElement("button",{key:c,onClick:()=>toggle(c),style:{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:"#fff"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},c)),
+        filtered.length===0 && React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},search?"No results":"All cities selected")
+      ),
+      value.length>0 && React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        React.createElement("span",{style:{fontSize:10,color:"#444"}},value.length+" selected"),
+        React.createElement("button",{onClick:()=>onChange([]),style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear")
       )
     )
   );
 }
 
-// City Multi-Select
-function CityMS({country,value=[],onChange}){
-  const[open,setOpen]=useState(false);const[search,setSearch]=useState("");const ref=useRef(null);
-  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
-  const cities=COUNTRY_CITIES[country]||[];
-  const filtered=cities.filter(c=>c.toLowerCase().includes(search.toLowerCase())&&!value.includes(c));
-  const toggle=c=>onChange(value.includes(c)?value.filter(x=>x!==c):[...value,c]);
-  if(!country)return React.createElement("div",null,React.createElement("label",{style:css.label},"Cities"),React.createElement("div",{style:{...css.input,color:"#333",cursor:"not-allowed"}},"Select a country first…"));
+// ── TAGS DROPDOWN ─────────────────────────────────────────────────────────────
+function TagsDD({tags,setTags,tagInput,setTagInput}) {
+  const [open,setOpen] = useState(false); const ref = useRef(null);
+  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
+  const toggle = t => setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);
+  const addCustom = () => { const v=tagInput.trim(); if(v&&!tags.includes(v))setTags(p=>[...p,v]); setTagInput(""); };
+  const filtered = TAGS_PRESET.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())&&!tags.includes(t));
+  const exactMatch = TAGS_PRESET.some(t=>t.toLowerCase()===tagInput.toLowerCase().trim());
   return React.createElement("div",{ref,style:{position:"relative"}},
-    React.createElement("label",{style:css.label},React.createElement(React.Fragment,null,"Cities ",React.createElement("span",{style:{color:"#444",fontWeight:400}},"(multi)"))),
-    React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.input,minHeight:44,height:"auto",display:"flex",flexWrap:"wrap",gap:4,alignItems:"center",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none",padding:"6px 10px"}},
-      value.length>0?value.map(c=>React.createElement("span",{key:c,style:{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600},onClick:e=>{e.stopPropagation();toggle(c);}},c,React.createElement("span",{style:{fontSize:11,cursor:"pointer",opacity:0.6}},"×"))):React.createElement("span",{style:{fontSize:13,color:"#444"}},"Select cities…"),
-      React.createElement("span",{style:{marginLeft:"auto",fontSize:10,color:"#444",flexShrink:0}},"▼")
-    ),
-    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:240}},
-      React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search city…",style:{...css.input,padding:"7px 10px",fontSize:12}})),
-      React.createElement("div",{style:{overflowY:"auto",flex:1}},
-        filtered.map(c=>React.createElement("button",{key:c,onClick:()=>toggle(c),style:{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:"#fff"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},c)),
-        filtered.length===0&&React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},search?"No results":"All cities selected")
-      ),
-      value.length>0&&React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},React.createElement("span",{style:{fontSize:10,color:"#444"}},value.length+" selected"),React.createElement("button",{onClick:()=>onChange([]),style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear"))
-    )
-  );
-}
-
-// Tags Dropdown
-function TagsDD({tags,setTags,tagInput,setTagInput}){
-  const[open,setOpen]=useState(false);const ref=useRef(null);
-  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
-  const toggle=t=>setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);
-  const addCustom=()=>{const v=tagInput.trim();if(v&&!tags.includes(v))setTags(p=>[...p,v]);setTagInput("");};
-  const filtered=TAGS_PRESET.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())&&!tags.includes(t));
-  const exactMatch=TAGS_PRESET.some(t=>t.toLowerCase()===tagInput.toLowerCase().trim());
-  return React.createElement("div",{ref,style:{position:"relative"}},
-    tags.length>0&&React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},tags.map(t=>React.createElement(Pill,{key:t,label:t,onRemove:()=>toggle(t)}))),
+    tags.length>0 && React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}, tags.map(t=>React.createElement(Pill,{key:t,label:t,onRemove:()=>toggle(t)}))),
     React.createElement("div",{style:{position:"relative"},onClick:()=>setOpen(true)},
-      React.createElement("input",{value:tagInput,onChange:e=>{setTagInput(e.target.value);setOpen(true);},onFocus:()=>setOpen(true),onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();if(tagInput.trim()&&!exactMatch)addCustom();else if(filtered.length>0)toggle(filtered[0]);}if(e.key==="Escape")setOpen(false);},placeholder:tags.length>0?"Add more…":"Search or select industries…",style:{...css.input,paddingRight:36,borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}}),
+      React.createElement("input",{value:tagInput,onChange:e=>{setTagInput(e.target.value);setOpen(true);},onFocus:()=>setOpen(true),onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();if(tagInput.trim()&&!exactMatch)addCustom();else if(filtered.length>0)toggle(filtered[0]);}if(e.key==="Escape")setOpen(false);},placeholder:tags.length>0?"Add more…":"Search or select industries…",style:{...css.inp,paddingRight:36,borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}}),
       React.createElement("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"#444",pointerEvents:"none"}},"▼")
     ),
-    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:50,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",maxHeight:260,display:"flex",flexDirection:"column"}},
+    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:50,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",maxHeight:260,display:"flex",flexDirection:"column"}},
       React.createElement("div",{style:{overflowY:"auto",flex:1}},
-        tagInput.trim()&&!exactMatch&&React.createElement("button",{onClick:()=>{addCustom();setOpen(false);},style:{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},React.createElement("span",{style:{fontSize:11,color:"#FF9500",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:6,padding:"2px 7px",fontWeight:700,flexShrink:0}},"+ Custom"),React.createElement("span",{style:{fontSize:12,color:"#fff"}},`"${tagInput.trim()}"`)),
+        tagInput.trim()&&!exactMatch && React.createElement("button",{onClick:()=>{addCustom();setOpen(false);},style:{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},
+          React.createElement("span",{style:{fontSize:11,color:"#FF9500",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:6,padding:"2px 7px",fontWeight:700,flexShrink:0}},"+ Custom"),
+          React.createElement("span",{style:{fontSize:12,color:"#fff"}},'"'+tagInput.trim()+'"')
+        ),
         filtered.map(t=>React.createElement("button",{key:t,onClick:()=>{toggle(t);setTagInput("");},style:{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:12,color:"#fff"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},t)),
-        tags.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())).map(t=>React.createElement("button",{key:t+"_s",onClick:()=>toggle(t),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 14px",background:"rgba(255,149,0,0.06)",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},React.createElement("span",{style:{fontSize:12,color:"#FF9500"}},t),React.createElement("span",{style:{fontSize:10,color:"#FF9500",fontWeight:700}},"✓")))
+        tags.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())).map(t=>React.createElement("button",{key:t+"_s",onClick:()=>toggle(t),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 14px",background:"rgba(255,149,0,0.06)",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},
+          React.createElement("span",{style:{fontSize:12,color:"#FF9500"}},t),
+          React.createElement("span",{style:{fontSize:10,color:"#FF9500",fontWeight:700}},"✓")
+        ))
       ),
-      tags.length>0&&React.createElement("div",{style:{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:10,color:"#444"}},tags.length+" selected"),React.createElement("button",{onClick:()=>{setTags([]);setOpen(false);},style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear all"))
+      tags.length>0 && React.createElement("div",{style:{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("span",{style:{fontSize:10,color:"#444"}},tags.length+" selected"),
+        React.createElement("button",{onClick:()=>{setTags([]);setOpen(false);},style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear all")
+      )
     )
   );
 }
 
-// MultiChips
-function MultiChips({label,options,value=[],onChange}){
-  const toggle=opt=>onChange(value.includes(opt)?value.filter(v=>v!==opt):[...value,opt]);
+// ── MULTI CHIPS ───────────────────────────────────────────────────────────────
+function MultiChips({label,options,value=[],onChange}) {
+  const toggle = opt => onChange(value.includes(opt)?value.filter(v=>v!==opt):[...value,opt]);
   return React.createElement("div",null,
-    React.createElement("label",{style:css.label},label),
+    React.createElement("label",{style:css.lbl},label),
     React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
-      options.map(opt=>{const active=value.includes(opt);return React.createElement("button",{key:opt,onClick:()=>toggle(opt),style:{fontSize:11,fontWeight:active?700:400,padding:"5px 12px",borderRadius:20,border:`1px solid ${active?"#FF9500":"#222"}`,background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",cursor:"pointer",transition:"all .12s"}},opt);})
+      options.map(opt=>{const active=value.includes(opt);return React.createElement("button",{key:opt,onClick:()=>toggle(opt),style:{fontSize:11,fontWeight:active?700:400,padding:"5px 12px",borderRadius:20,border:"1px solid "+(active?"#FF9500":"#222"),background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",cursor:"pointer",transition:"all .12s"}},opt);})
     )
   );
 }
 
-// Persona Section
-function PersonaSection({persona,onChange}){
-  const set=(k,v)=>onChange({...persona,[k]:v});
-  const[openG,setOpenG]=useState({core:true});
-  const toggleG=key=>setOpenG(p=>({...p,[key]:!p[key]}));
+// ── PERSONA SECTION ───────────────────────────────────────────────────────────
+function PersonaSection({persona,onChange}) {
+  const set = (k,v) => onChange({...persona,[k]:v});
+  const [openG,setOpenG] = useState({core:true});
   return React.createElement("div",null,
     PERSONA_GROUPS.map(group=>{
-      const isOpen=!!openG[group.key];
-      const multiActive=group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
+      const isOpen = !!openG[group.key];
+      const multiActive = group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
       return React.createElement("div",{key:group.key,style:{...css.card,overflow:"hidden",marginBottom:10}},
-        React.createElement("button",{onClick:()=>toggleG(group.key),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:14}},group.icon),React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},group.label),group.key!=="core"&&multiActive>0&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}},multiActive)),
+        React.createElement("button",{onClick:()=>setOpenG(p=>({...p,[group.key]:!p[group.key]})),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{fontSize:14}},group.icon),
+            React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},group.label),
+            group.key!=="core"&&multiActive>0 && React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}},multiActive)
+          ),
           React.createElement("span",{style:{fontSize:10,color:"#444",transform:isOpen?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
         ),
-        isOpen&&React.createElement(React.Fragment,null,
-          React.createElement(Divider),
+        isOpen && React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
           React.createElement("div",{style:{padding:"16px 18px",display:"flex",flexDirection:"column",gap:16}},
-            group.key==="core"?React.createElement(React.Fragment,null,
-              React.createElement(Row,{cols:3,mb:12},React.createElement(Input,{label:"Age Min",type:"number",value:persona.ageMin,onChange:e=>set("ageMin",e.target.value)}),React.createElement(Input,{label:"Age Max",type:"number",value:persona.ageMax,onChange:e=>set("ageMax",e.target.value)}),React.createElement(Sel,{label:"Gender",value:persona.gender,onChange:e=>set("gender",e.target.value)},["All","Male","Female","Non-binary"].map(o=>React.createElement("option",{key:o},o)))),
-              React.createElement(Row,{cols:3,mb:12},React.createElement(Sel,{label:"Income Level",value:persona.incomeLevel,onChange:e=>set("incomeLevel",e.target.value)},["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"].map(o=>React.createElement("option",{key:o},o))),React.createElement(Sel,{label:"Education",value:persona.education,onChange:e=>set("education",e.target.value)},["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"].map(o=>React.createElement("option",{key:o},o))),React.createElement(Sel,{label:"Occupation",value:persona.occupation,onChange:e=>set("occupation",e.target.value)},["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"].map(o=>React.createElement("option",{key:o},o)))),
-              React.createElement(Row,{cols:2,mb:0},React.createElement(Sel,{label:"Family Size",value:persona.familySize,onChange:e=>set("familySize",e.target.value)},["Single","2","2–4","4+","Multi-generational"].map(o=>React.createElement("option",{key:o},o))),React.createElement(Sel,{label:"Lifestyle",value:persona.lifestyle,onChange:e=>set("lifestyle",e.target.value)},["Urban","Suburban","Rural","Nomadic","Mixed"].map(o=>React.createElement("option",{key:o},o))))
-            ):React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},group.fields.map(f=>React.createElement(MultiChips,{key:f.key,label:f.label,options:f.options,value:persona[f.key]||[],onChange:v=>set(f.key,v)})))
+            group.key==="core" ? React.createElement(React.Fragment,null,
+              React.createElement(Row,{cols:3,mb:12},
+                React.createElement(Inp,{label:"Age Min",type:"number",value:persona.ageMin,onChange:e=>set("ageMin",e.target.value)}),
+                React.createElement(Inp,{label:"Age Max",type:"number",value:persona.ageMax,onChange:e=>set("ageMax",e.target.value)}),
+                React.createElement(Sel,{label:"Gender",value:persona.gender,onChange:e=>set("gender",e.target.value)},["All","Male","Female","Non-binary"].map(o=>React.createElement("option",{key:o},o)))
+              ),
+              React.createElement(Row,{cols:3,mb:12},
+                React.createElement(Sel,{label:"Income Level",value:persona.incomeLevel,onChange:e=>set("incomeLevel",e.target.value)},["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"].map(o=>React.createElement("option",{key:o},o))),
+                React.createElement(Sel,{label:"Education",value:persona.education,onChange:e=>set("education",e.target.value)},["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"].map(o=>React.createElement("option",{key:o},o))),
+                React.createElement(Sel,{label:"Occupation",value:persona.occupation,onChange:e=>set("occupation",e.target.value)},["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"].map(o=>React.createElement("option",{key:o},o)))
+              ),
+              React.createElement(Row,{cols:2,mb:0},
+                React.createElement(Sel,{label:"Family Size",value:persona.familySize,onChange:e=>set("familySize",e.target.value)},["Single","2","2–4","4+","Multi-generational"].map(o=>React.createElement("option",{key:o},o))),
+                React.createElement(Sel,{label:"Lifestyle",value:persona.lifestyle,onChange:e=>set("lifestyle",e.target.value)},["Urban","Suburban","Rural","Nomadic","Mixed"].map(o=>React.createElement("option",{key:o},o)))
+              )
+            ) : React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+              group.fields.map(f=>React.createElement(MultiChips,{key:f.key,label:f.label,options:f.options,value:persona[f.key]||[],onChange:v=>set(f.key,v)}))
+            )
           )
         )
       );
@@ -264,300 +465,377 @@ function PersonaSection({persona,onChange}){
   );
 }
 
-// Project Form
-function ProjectForm({initial,onSave,onCancel,onDelete,isEdit}){
-  const[name,setName]=useState(initial.name);
-  const[description,setDescription]=useState(initial.description||"");
-  const[tags,setTags]=useState(initial.tags||[]);
-  const[tagInput,setTagInput]=useState("");
-  const[error,setError]=useState(null);
-  const handleSave=()=>{if(!name.trim()){setError("Project name is required.");return;}onSave({name,description,status:initial.status||"draft",tags,members:initial.members||[]});};
+// ── PROJECT FORM ──────────────────────────────────────────────────────────────
+function ProjectForm({initial,onSave,onCancel,onDelete,isEdit}) {
+  const [name,setName] = useState(initial.name||"");
+  const [description,setDescription] = useState(initial.description||"");
+  const [tags,setTags] = useState(initial.tags||[]);
+  const [tagInput,setTagInput] = useState("");
+  const [error,setError] = useState(null);
+  const handleSave = () => { if(!name.trim()){setError("Project name is required.");return;} onSave({name,description,status:initial.status||"draft",tags,members:initial.members||[]}); };
   return React.createElement("div",{style:{maxWidth:560,margin:"0 auto",padding:"32px 24px"}},
-    React.createElement(FCard,{icon:"📋",title:"Project Details"},React.createElement(Input,{label:"Project Name *",value:name,onChange:e=>setName(e.target.value),placeholder:"e.g. MENA Retail Expansion 2025"}),React.createElement("div",{style:{marginTop:14}},React.createElement(Input,{label:"Description",value:description,onChange:e=>setDescription(e.target.value),placeholder:"What is this project about?",rows:3}))),
+    React.createElement(FCard,{icon:"📋",title:"Project Details"},
+      React.createElement(Inp,{label:"Project Name *",value:name,onChange:e=>setName(e.target.value),placeholder:"e.g. MENA Retail Expansion 2025"}),
+      React.createElement("div",{style:{marginTop:14}},React.createElement(Inp,{label:"Description",value:description,onChange:e=>setDescription(e.target.value),placeholder:"What is this project about?",rows:3}))
+    ),
     React.createElement(FCard,{icon:"🏷",title:"Industries / Tags"},React.createElement(TagsDD,{tags,setTags,tagInput,setTagInput})),
-    error&&React.createElement("div",{style:{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
-    React.createElement("div",{style:{display:"flex",gap:10}},React.createElement(GBtn,{onClick:onCancel},"Cancel"),React.createElement("div",{style:{flex:1}},React.createElement(PBtn,{onClick:handleSave,style:{width:"100%",padding:12}},isEdit?"Save Changes":"Create Project"))),
-    isEdit&&React.createElement("div",{style:{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}},React.createElement("button",{onClick:onDelete,style:{background:"transparent",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"8px 16px",fontSize:12,color:"#FF3B30",cursor:"pointer"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,59,48,0.08)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},"🗑 Delete Project"))
+    error && React.createElement("div",{style:{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
+    React.createElement("div",{style:{display:"flex",gap:10}},
+      React.createElement(GBtn,{onClick:onCancel},"Cancel"),
+      React.createElement("div",{style:{flex:1}},React.createElement(PBtn,{onClick:handleSave,style:{width:"100%",padding:12}},isEdit?"Save Changes":"Create Project"))
+    ),
+    isEdit && React.createElement("div",{style:{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}},
+      React.createElement("button",{onClick:onDelete,style:{background:"transparent",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"8px 16px",fontSize:12,color:"#FF3B30",cursor:"pointer"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,59,48,0.08)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},"🗑 Delete Project")
+    )
   );
 }
 
-// Research Form
-function ResearchForm({onRun}){
-  const[form,setForm]=useState(emptyRForm());
-  const[loading,setLoading]=useState(false);
-  const[loadMsg,setLoadMsg]=useState("");
-  const[loadSteps,setLoadSteps]=useState([]);
-  const[error,setError]=useState(null);
-  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const setCountry=v=>setForm(f=>({...f,geo:{country:v,cities:[]}}));
-  const setCities=v=>setForm(f=>({...f,geo:{...f.geo,cities:v}}));
+// ── RESEARCH FORM ─────────────────────────────────────────────────────────────
+function ResearchForm({onRun,apiKey}) {
+  const [form,setForm] = useState(emptyRForm());
+  const [loading,setLoading] = useState(false);
+  const [loadMsg,setLoadMsg] = useState("");
+  const [loadSteps,setLoadSteps] = useState([]);
+  const [error,setError] = useState(null);
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
-  const run=async()=>{
-    if(!form.geo.country){setError("Please select a country.");return;}
-    if(!form.researchGoal){setError("Please select a research goal.");return;}
-    setError(null);setLoading(true);setLoadSteps([]);
-    const timers=[];
-    if(form.tier===1){setLoadMsg("Generating archetypes…");timers.push(setTimeout(()=>setLoadMsg("Building insights…"),2000));timers.push(setTimeout(()=>setLoadMsg("Finalising report…"),4000));}
-    else if(form.tier===2){setLoadMsg("Searching live web data…");timers.push(setTimeout(()=>setLoadMsg("Analysing signals…"),4000));timers.push(setTimeout(()=>setLoadMsg("Generating insights…"),10000));timers.push(setTimeout(()=>setLoadMsg("Building report…"),18000));}
-    else{setLoadMsg("Fetching verified APIs…");}
-    try{
-      let verifiedData=null;
-      if(form.tier===3){verifiedData=await fetchVerifiedData(form,(msg)=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg,ok:true}]);});setLoadSteps(p=>[...p,{msg:"✓ Verified data collected",ok:true}]);setLoadMsg("Running AI synthesis…");}
-      const{prompt,useWebSearch}=buildPrompt(form,verifiedData);
-      const body={model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
-      if(useWebSearch)body.tools=[{"type":"web_search_20250305","name":"web_search"}];
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify(body)});
-      const data=await res.json();
-      const raw=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("")||"";
-      const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+  const run = async () => {
+    if (!form.geo.country){setError("Please select a country.");return;}
+    if (!form.researchGoal){setError("Please select a research goal.");return;}
+    setError(null); setLoading(true); setLoadSteps([]);
+    const timers = [];
+    if (form.tier===1){setLoadMsg("Generating archetypes…");timers.push(setTimeout(()=>setLoadMsg("Building insights…"),2000));timers.push(setTimeout(()=>setLoadMsg("Finalising report…"),4000));}
+    else if (form.tier===2){setLoadMsg("Searching live web data…");timers.push(setTimeout(()=>setLoadMsg("Analysing signals…"),4000));timers.push(setTimeout(()=>setLoadMsg("Generating insights…"),10000));timers.push(setTimeout(()=>setLoadMsg("Building report…"),18000));}
+    else {setLoadMsg("Fetching verified APIs…");}
+    try {
+      let verifiedData = null;
+      if (form.tier===3) {
+        verifiedData = await fetchVerifiedData(form,(msg)=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg}]);});
+        setLoadSteps(p=>[...p,{msg:"✓ Verified data collected"}]);
+        setLoadMsg("Running AI synthesis…");
+      }
+      const {prompt,useWebSearch} = buildPrompt(form, verifiedData);
+      const body = {model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
+      if (useWebSearch) body.tools = [{"type":"web_search_20250305","name":"web_search"}];
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify(body)});
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message||"API error");
+      const raw = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("")||"";
+      const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
       timers.forEach(clearTimeout);
-      onRun({id:uid(),name:form.name||`Run — ${nowStr()}`,createdAt:nowStr(),geo:{...form.geo},researchGoal:form.researchGoal,numberOfPeople:form.numberOfPeople,language:form.language,tier:form.tier,persona:{...form.persona},verifiedData,results:parsed});
-    }catch(e){timers.forEach(clearTimeout);setError("Generation failed. Please try again.");setLoading(false);}
+      onRun({id:uid(),name:form.name||"Run — "+nowStr(),createdAt:nowStr(),geo:{...form.geo},researchGoal:form.researchGoal,numberOfPeople:form.numberOfPeople,language:form.language,tier:form.tier,persona:{...form.persona},verifiedData,results:parsed});
+    } catch(e) {
+      timers.forEach(clearTimeout);
+      setError("Generation failed: "+e.message);
+      setLoading(false);
+    }
   };
 
-  const tierCfg=TIERS[form.tier];
+  const tierCfg = TIERS[form.tier];
   return React.createElement("div",{style:{maxWidth:660,margin:"0 auto",padding:"32px 24px"}},
     // Tier selector
     React.createElement("div",{style:{...css.card,padding:20,marginBottom:14}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},React.createElement("span",{style:{fontSize:14}},"⚡"),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},"Research Tier")),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},
-        Object.values(TIERS).map(t=>{const active=form.tier===t.id;return React.createElement("button",{key:t.id,onClick:()=>set("tier",t.id),style:{background:active?"#1a1a1a":"transparent",border:`1.5px solid ${active?t.badgeColor:"#222"}`,borderRadius:12,padding:"14px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s"}},React.createElement("div",{style:{fontSize:18,marginBottom:6}},t.icon),React.createElement("div",{style:{fontSize:11,fontWeight:700,color:active?t.badgeColor:"#fff",marginBottom:4}},"Tier "+t.id),React.createElement("div",{style:{fontSize:11,fontWeight:600,color:active?t.badgeColor:"#888",marginBottom:6,lineHeight:1.3}},t.label),React.createElement("div",{style:{fontSize:10,color:"#444",lineHeight:1.4,marginBottom:4}},t.desc),React.createElement("div",{style:{fontSize:10,color:active?t.badgeColor:"#444",fontWeight:600}},t.time),t.providers.length>0&&React.createElement("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",gap:3}},t.providers.map(p=>React.createElement("span",{key:p,style:{fontSize:9,background:"rgba(52,199,89,0.1)",color:"#34C759",border:"1px solid rgba(52,199,89,0.2)",borderRadius:6,padding:"1px 5px"}},p))));}))
+        Object.values(TIERS).map(t=>{
+          const active = form.tier===t.id;
+          return React.createElement("button",{key:t.id,onClick:()=>set("tier",t.id),style:{background:active?"#1a1a1a":"transparent",border:"1.5px solid "+(active?t.badgeColor:"#222"),borderRadius:12,padding:"14px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s"}},
+            React.createElement("div",{style:{fontSize:18,marginBottom:6}},t.icon),
+            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:active?t.badgeColor:"#fff",marginBottom:4}},"Tier "+t.id),
+            React.createElement("div",{style:{fontSize:11,fontWeight:600,color:active?t.badgeColor:"#888",marginBottom:6,lineHeight:1.3}},t.label),
+            React.createElement("div",{style:{fontSize:10,color:"#444",lineHeight:1.4,marginBottom:4}},t.desc),
+            React.createElement("div",{style:{fontSize:10,color:active?t.badgeColor:"#444",fontWeight:600}},t.time),
+            t.providers.length>0 && React.createElement("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",gap:3}},t.providers.map(p=>React.createElement("span",{key:p,style:{fontSize:9,background:"rgba(52,199,89,0.1)",color:"#34C759",border:"1px solid rgba(52,199,89,0.2)",borderRadius:6,padding:"1px 5px"}},p)))
+          );
+        })
+      )
     ),
-    React.createElement(FCard,{icon:"🏷",title:"Run Name"},React.createElement(Input,{value:form.name,onChange:e=>set("name",e.target.value),placeholder:"e.g. Cairo Urban Millennials — Q2 2025"})),
-    React.createElement(FCard,{icon:"🌍",title:"Geography"},React.createElement(Row,{cols:2,mb:0},React.createElement(CountryDD,{value:form.geo.country,onChange:setCountry}),React.createElement(CityMS,{country:form.geo.country,value:form.geo.cities,onChange:setCities}))),
+    React.createElement(FCard,{icon:"🏷",title:"Run Name"},React.createElement(Inp,{value:form.name,onChange:e=>set("name",e.target.value),placeholder:"e.g. Cairo Urban Millennials — Q2 2025"})),
+    React.createElement(FCard,{icon:"🌍",title:"Geography"},
+      React.createElement(Row,{cols:2,mb:0},
+        React.createElement(CountryDD,{value:form.geo.country,onChange:v=>setForm(f=>({...f,geo:{country:v,cities:[]}}))}),
+        React.createElement(CityMS,{country:form.geo.country,value:form.geo.cities,onChange:v=>setForm(f=>({...f,geo:{...f.geo,cities:v}}))})
+      )
+    ),
     React.createElement(FCard,{icon:"🏢",title:"Research Context"},
       React.createElement("div",{style:{marginBottom:16}},
-        React.createElement("label",{style:css.label},"Research Goal"),
+        React.createElement("label",{style:css.lbl},"Research Goal"),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}},
-          RESEARCH_GOALS.map(g=>{const active=form.researchGoal===g;return React.createElement("button",{key:g,onClick:()=>set("researchGoal",active?"":g),style:{padding:"9px 12px",borderRadius:10,border:`1px solid ${active?"#FF9500":"#222"}`,background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",fontSize:12,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}},g);})
+          RESEARCH_GOALS.map(g=>{const active=form.researchGoal===g;return React.createElement("button",{key:g,onClick:()=>set("researchGoal",active?"":g),style:{padding:"9px 12px",borderRadius:10,border:"1px solid "+(active?"#FF9500":"#222"),background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",fontSize:12,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}},g);})
         )
       ),
-      React.createElement(Row,{mb:0},React.createElement(Input,{label:"Target Audience Size",type:"number",value:form.numberOfPeople,onChange:e=>set("numberOfPeople",e.target.value),placeholder:"e.g. 50000"}),React.createElement(Sel,{label:"Report Language",value:form.language,onChange:e=>set("language",e.target.value)},LANGUAGES.map(l=>React.createElement("option",{key:l.code,value:l.code},l.label))))
+      React.createElement(Row,{mb:0},
+        React.createElement(Inp,{label:"Target Audience Size",type:"number",value:form.numberOfPeople,onChange:e=>set("numberOfPeople",e.target.value),placeholder:"e.g. 50000"}),
+        React.createElement(Sel,{label:"Report Language",value:form.language,onChange:e=>set("language",e.target.value)},LANGUAGES.map(l=>React.createElement("option",{key:l.code,value:l.code},l.label)))
+      )
     ),
     React.createElement("div",{style:{marginBottom:14}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"0 2px"}},React.createElement("span",{style:{fontSize:14}},"👤"),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},"Target Persona")),
       React.createElement(PersonaSection,{persona:form.persona,onChange:p=>setForm(f=>({...f,persona:p}))})
     ),
-    error&&React.createElement("div",{style:{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
-    loading&&form.tier===3&&loadSteps.length>0&&React.createElement("div",{style:{...css.card,padding:16,marginBottom:16}},loadSteps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#34C759",marginBottom:4}},React.createElement("span",null,"✓"),React.createElement("span",null,s.msg)))),
+    error && React.createElement("div",{style:{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
+    loading&&form.tier===3&&loadSteps.length>0 && React.createElement("div",{style:{...css.card,padding:16,marginBottom:16}},loadSteps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#34C759",marginBottom:4}},React.createElement("span",null,"✓"),React.createElement("span",null,s.msg)))),
     React.createElement("button",{onClick:run,disabled:loading,style:{width:"100%",background:loading?"#111":"#FF9500",border:loading?"1px solid #222":"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:loading?"#666":"#000",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s",letterSpacing:"-0.3px"}},
-      loading?React.createElement(React.Fragment,null,loadMsg,React.createElement(Dots)):`${tierCfg.icon} Run Tier ${form.tier} Research`
+      loading ? React.createElement(React.Fragment,null,loadMsg,React.createElement(Dots)) : tierCfg.icon+" Run Tier "+form.tier+" Research"
     ),
     React.createElement("div",{style:{textAlign:"center",marginTop:8,fontSize:11,color:"#444"}},tierCfg.desc+" · "+tierCfg.time)
   );
 }
 
-// App Header
-function AppHeader({back,backLabel,title,right}){
-  const[h,setH]=useState(false);
-  return React.createElement("div",{style:{position:"sticky",top:0,zIndex:20,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #1a1a1a",padding:"0 28px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between"}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,minWidth:0}},
-      back?React.createElement("button",{onClick:back,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{display:"flex",alignItems:"center",gap:6,background:"transparent",border:`1px solid ${h?"#333":"#1a1a1a"}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s"}},"← "+backLabel):React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexShrink:0}},React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}},"●"),React.createElement("span",{style:{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}},"ResearchLens")),
-      title&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{width:3,height:3,borderRadius:"50%",background:"#333"}}),React.createElement("span",{style:{fontSize:13,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},title))
-    ),
-    right&&React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},right)
+// ── RESULT COMPONENTS ─────────────────────────────────────────────────────────
+function TierBadge({tier}) {
+  const t = TIERS[tier||2];
+  return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},t.icon+" "+t.badge);
+}
+function ProviderBadges({providers=[]}) {
+  if (!providers.length) return null;
+  return React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}},
+    React.createElement("span",{style:{fontSize:10,color:"#444",alignSelf:"center",marginRight:4}},"Data:"),
+    providers.map(p=>{const s=PROVIDER_STYLES[p]||{color:"#888",bg:"rgba(136,136,136,0.1)",border:"rgba(136,136,136,0.2)",icon:"📊"};return React.createElement("span",{key:p,style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.border}},s.icon+" "+p);})
   );
 }
-
-// Result components
-function TierBadge({tier}){const t=TIERS[tier||2];return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:`1px solid ${t.badgeBorder}`}},t.icon+" "+t.badge);}
-function ProviderBadges({providers=[]}){if(!providers.length)return null;return React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}},React.createElement("span",{style:{fontSize:10,color:"#444",alignSelf:"center",marginRight:4}},"Data:"),providers.map(p=>{const s=PROVIDER_STYLES[p]||{color:"#888",bg:"rgba(136,136,136,0.1)",border:"rgba(136,136,136,0.2)",icon:"📊"};return React.createElement("span",{key:p,style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:`1px solid ${s.border}`}},s.icon+" "+p);}));}
-function VerifiedStats({stats=[],worldBankRaw}){
-  const displayStats=stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v&&v.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
-  if(!displayStats.length)return null;
+function VerifiedStats({stats=[],worldBankRaw}) {
+  const displayStats = stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v&&v.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
+  if (!displayStats.length) return null;
   return React.createElement("div",{style:{background:"rgba(52,199,89,0.06)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:14,padding:20,marginBottom:16}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:14}},React.createElement("span",null,"✅"),React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#34C759"}},"Verified Data Points"),React.createElement("span",{style:{fontSize:10,color:"#444",background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:8,padding:"1px 7px"}},displayStats.length)),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}},
-      displayStats.map((s,i)=>React.createElement("div",{key:i,style:{background:"#111",border:"1px solid rgba(52,199,89,0.12)",borderRadius:10,padding:"10px 12px"}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:3,display:"flex",justifyContent:"space-between"}},React.createElement("span",null,s.source),React.createElement("span",null,s.year)),React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#34C759",marginBottom:2}},s.value),React.createElement("div",{style:{fontSize:10,color:"#888",lineHeight:1.3}},s.label)))
+      displayStats.map((s,i)=>React.createElement("div",{key:i,style:{background:"#111",border:"1px solid rgba(52,199,89,0.12)",borderRadius:10,padding:"10px 12px"}},
+        React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:3,display:"flex",justifyContent:"space-between"}},React.createElement("span",null,s.source),React.createElement("span",null,s.year)),
+        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#34C759",marginBottom:2}},s.value),
+        React.createElement("div",{style:{fontSize:10,color:"#888",lineHeight:1.3}},s.label)
+      ))
     )
   );
 }
-function SourcesStrip({sources=[]}){if(!sources.length)return null;return React.createElement("div",{style:{...css.card,padding:"12px 16px",marginBottom:16}},React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:8}},"Sources"),React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},sources.map((s,i)=>React.createElement("span",{key:i,style:{fontSize:10,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:8,padding:"3px 9px",color:"#666"}},s))));}
+function SourcesStrip({sources=[]}) {
+  if (!sources.length) return null;
+  return React.createElement("div",{style:{...css.card,padding:"12px 16px",marginBottom:16}},
+    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:8}},"Sources"),
+    React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},sources.map((s,i)=>React.createElement("span",{key:i,style:{fontSize:10,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:8,padding:"3px 9px",color:"#666"}},s)))
+  );
+}
 
-// API Key Gate
-function ApiKeyGate({onUnlock}){
-  const[key,setKey]=useState("");
-  const[show,setShow]=useState(false);
-  const[error,setError]=useState("");
-  const[testing,setTesting]=useState(false);
+// ── API KEY GATE ──────────────────────────────────────────────────────────────
+function ApiKeyGate({onUnlock}) {
+  const [key,setKey] = useState("");
+  const [show,setShow] = useState(false);
+  const [error,setError] = useState("");
 
-  const handleUnlock=()=>{
-    const k=key.trim();
-    if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}
-    if(k.length<40){setError("Key looks too short. Please paste the full key.");return;}
+  const handleUnlock = () => {
+    const k = key.trim();
+    if (!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}
+    if (k.length<40){setError("Key looks too short. Please paste the full key.");return;}
     localStorage.setItem("rl_apikey",k);
     onUnlock(k);
   };
 
   return React.createElement("div",{style:{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
     React.createElement("div",{style:{width:"100%",maxWidth:420,textAlign:"center"}},
-      // Logo
       React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:24,margin:"0 auto 24px"}},"●"),
       React.createElement("h1",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1.1}},"Welcome to ",React.createElement("span",{style:{color:"#FF9500"}},"ResearchLens.")),
       React.createElement("p",{style:{fontSize:14,color:"#666",marginBottom:32,lineHeight:1.6}},"Enter your Anthropic API key to get started. Your key is stored locally in your browser only."),
-      // Input
       React.createElement("div",{style:{background:"#111",border:"1px solid #222",borderRadius:14,padding:20,marginBottom:16,textAlign:"left"}},
         React.createElement("label",{style:{display:"block",fontSize:11,color:"#666",marginBottom:8,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase"}},"Anthropic API Key"),
         React.createElement("div",{style:{position:"relative"}},
-          React.createElement("input",{
-            type:show?"text":"password",
-            value:key,
-            onChange:e=>setKey(e.target.value),
-            onKeyDown:e=>e.key==="Enter"&&handleUnlock(),
-            placeholder:"sk-ant-api03-...",
-            style:{width:"100%",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,padding:"11px 44px 11px 14px",fontSize:13,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:"monospace",letterSpacing:"0.5px"}
-          }),
+          React.createElement("input",{type:show?"text":"password",value:key,onChange:e=>setKey(e.target.value),onKeyDown:e=>e.key==="Enter"&&handleUnlock(),placeholder:"sk-ant-api03-...",style:{width:"100%",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,padding:"11px 44px 11px 14px",fontSize:13,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:"monospace",letterSpacing:"0.5px"}}),
           React.createElement("button",{onClick:()=>setShow(s=>!s),style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#444",lineHeight:1}},show?"🙈":"👁")
         ),
-        error&&React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
+        error && React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
       ),
-      React.createElement("button",{onClick:handleUnlock,disabled:testing||!key.trim(),style:{width:"100%",background:testing||!key.trim()?"#111":"#FF9500",border:testing||!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:testing||!key.trim()?"#444":"#000",cursor:testing||!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},
-        testing?React.createElement(React.Fragment,null,"Verifying…",React.createElement(Dots)):"Unlock ResearchLens →"      ),
-      // Help text
+      React.createElement("button",{onClick:handleUnlock,disabled:!key.trim(),style:{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},"Unlock ResearchLens →"),
       React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
         React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}},"How to get your API key"),
-        [["1","Go to console.anthropic.com"],["2","Sign in or create a free account"],["3","Navigate to API Keys → Create Key"],["4","Copy and paste it above"]].map(([n,t])=>
-          React.createElement("div",{key:n,style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
-            React.createElement("div",{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#FF9500",flexShrink:0}},n),
-            React.createElement("span",{style:{fontSize:12,color:"#666"}},t)
-          )
-        ),
+        [["1","Go to console.anthropic.com"],["2","Sign in or create a free account"],["3","Navigate to API Keys → Create Key"],["4","Copy and paste it above"]].map(([n,t])=>React.createElement("div",{key:n,style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+          React.createElement("div",{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#FF9500",flexShrink:0}},n),
+          React.createElement("span",{style:{fontSize:12,color:"#666"}},t)
+        )),
         React.createElement("a",{href:"https://console.anthropic.com/settings/keys",target:"_blank",style:{display:"block",marginTop:10,fontSize:12,color:"#FF9500",textDecoration:"none",fontWeight:600}},"Open Anthropic Console →")
       )
     )
   );
 }
 
-// MAIN APP
-function App(){
-  const[view,setView]=useState("projects");
-  const[apiKey,setApiKey]=useState(()=>localStorage.getItem("rl_apikey")||"");
-  const[projects,setProjects]=useState([]);
-  const[ready,setReady]=useState(false);
-  const[activeProj,setActiveProj]=useState(null);
-  const[activeRun,setActiveRun]=useState(null);
-  const[editingProj,setEditingProj]=useState(null);
-  const[toast,setToast]=useState(null);
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function App() {
+  const [view,setView] = useState("projects");
+  const [apiKey,setApiKey] = useState(()=>localStorage.getItem("rl_apikey")||"");
+  const [projects,setProjects] = useState([]);
+  const [ready,setReady] = useState(false);
+  const [activeProj,setActiveProj] = useState(null);
+  const [activeRun,setActiveRun] = useState(null);
+  const [editingProj,setEditingProj] = useState(null);
+  const [toast,setToast] = useState(null);
 
-  const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
+  const showToast = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
 
-  useEffect(()=>{
-    // Try persistent storage first, fall back to localStorage
-    const tryLoad=async()=>{
-      try{
-        if(window.storage){const r=await window.storage.get(STORAGE_KEY);if(r){setProjects(JSON.parse(r.value));setReady(true);return;}}
-      }catch(_){}
-      try{const d=localStorage.getItem(STORAGE_KEY);setProjects(d?JSON.parse(d):[]);}catch(_){}
-      setReady(true);
-    };
-    tryLoad();
-  },[]);
+  useEffect(()=>{ sbLoad().then(p=>{setProjects(p);setReady(true);}); },[]);
 
-  const persist=async list=>{
-    setProjects(list);
-    try{if(window.storage)await window.storage.set(STORAGE_KEY,JSON.stringify(list));}catch(_){}
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));}catch(_){}
-  };
+  const persist = async (list) => { setProjects(list); await sbSave(list); };
+  const handleCreate = async data => { const proj={id:uid(),...data,createdAt:nowStr(),runs:[]}; const list=[proj,...projects]; await persist(list); setActiveProj(proj); showToast("Project created ✓"); setView("project"); };
+  const handleUpdate = async data => { const list=projects.map(p=>p.id===activeProj.id?{...p,...data}:p); await persist(list); setActiveProj(list.find(p=>p.id===activeProj.id)); showToast("Saved ✓"); setView("project"); };
+  const handleDelete = async () => { await sbDelete(activeProj.id); const list=projects.filter(p=>p.id!==activeProj.id); setProjects(list); try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){} showToast("Deleted","warn"); setView("projects"); };
+  const handleRunComplete = async run => { const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]}; const list=projects.map(p=>p.id===activeProj.id?updProj:p); await persist(list); setActiveProj(updProj); setActiveRun(run); showToast("Report ready ✓"); setView("research"); };
 
-  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);setActiveProj(proj);showToast("Project created ✓");setView("project");};
-  const handleUpdate=async data=>{const list=projects.map(p=>p.id===activeProj.id?{...p,...data}:p);await persist(list);setActiveProj(list.find(p=>p.id===activeProj.id));showToast("Saved ✓");setView("project");};
-  const handleDelete=async()=>{await persist(projects.filter(p=>p.id!==activeProj.id));showToast("Deleted","warn");setView("projects");};
-  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===activeProj.id?updProj:p);await persist(list);setActiveProj(updProj);setActiveRun(run);showToast("Report ready ✓");setView("research");};
-
-  if(!apiKey)return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
-  if(!ready)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:20}},"●"),React.createElement(Dots));
+  if (!apiKey) return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
+  if (!ready) return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
+    React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:20}},"●"),
+    React.createElement(Dots)
+  );
 
   // PROJECTS LIST
-  if(view==="projects")return React.createElement("div",{style:css.page},
+  if (view==="projects") return React.createElement("div",{style:css.page},
     React.createElement(Toast,{toast}),
-    React.createElement(AppHeader,{right:React.createElement(React.Fragment,null,React.createElement(GBtn,{onClick:()=>{localStorage.removeItem("rl_apikey");setApiKey("");},style:{padding:"6px 12px",fontSize:11}},"🔑 Change Key"),React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"8px 18px",fontSize:13}},"+ New Project"))}),
-    // Hero
+    React.createElement(Header,{right:React.createElement(React.Fragment,null,
+      React.createElement(GBtn,{onClick:()=>{localStorage.removeItem("rl_apikey");setApiKey("");},style:{padding:"6px 12px",fontSize:11}},"🔑 Change Key"),
+      React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"8px 18px",fontSize:13}},"+ New Project")
+    )}),
     React.createElement("div",{style:{padding:"80px 32px 72px",borderBottom:"1px solid #111",position:"relative",overflow:"hidden"}},
       React.createElement("div",{style:{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle,#1a1a1a 1px,transparent 1px)",backgroundSize:"32px 32px",opacity:0.4,pointerEvents:"none"}}),
       React.createElement("div",{style:{position:"relative",maxWidth:680,margin:"0 auto",textAlign:"center"}},
-        React.createElement("div",{style:{display:"inline-flex",alignItems:"center",gap:7,marginBottom:28}},React.createElement("span",{style:{width:7,height:7,borderRadius:"50%",background:"#FF9500",display:"inline-block"}}),React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#888"}},"Synthetic Discovery Platform")),
+        React.createElement("div",{style:{display:"inline-flex",alignItems:"center",gap:7,marginBottom:28}},
+          React.createElement("span",{style:{width:7,height:7,borderRadius:"50%",background:"#FF9500",display:"inline-block"}}),
+          React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#888"}},"Synthetic Discovery Platform")
+        ),
         React.createElement("h1",{style:{margin:"0 0 16px",fontSize:52,fontWeight:900,lineHeight:1.0,letterSpacing:"-2.5px",color:"#fff"}},
           "Make almost any market research with ",React.createElement("span",{style:{color:"#FF9500"}},"ResearchLens.")
         ),
         React.createElement("p",{style:{margin:"0 0 40px",fontSize:16,color:"#666",lineHeight:1.6,maxWidth:480,marginLeft:"auto",marginRight:"auto"}},"The most advanced AI for consumer insights. Better data, new capabilities, incredible depth."),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:12}},React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started"),React.createElement(GBtn,{style:{padding:"12px 24px",fontSize:14,borderRadius:12}},"Learn more")),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:12}},
+          React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started"),
+          React.createElement(GBtn,{style:{padding:"12px 24px",fontSize:14,borderRadius:12}},"Learn more")
+        ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginTop:56,borderTop:"1px solid #111",paddingTop:40}},
-          [["3","Research Tiers"],["100+","Markets"],["Live","Web + API Data"]].map(([val,lbl],i)=>React.createElement("div",{key:i,style:{flex:1,textAlign:"center",borderRight:i<2?"1px solid #111":"none"}},React.createElement("div",{style:{fontSize:28,fontWeight:900,color:i===0?"#FF9500":"#fff",letterSpacing:"-1px",lineHeight:1}},val),React.createElement("div",{style:{fontSize:11,color:"#444",fontWeight:500,marginTop:4}},lbl)))
+          [["3","Research Tiers"],["100+","Markets"],["Live","Web + API Data"]].map(([val,lbl],i)=>React.createElement("div",{key:i,style:{flex:1,textAlign:"center",borderRight:i<2?"1px solid #111":"none"}},
+            React.createElement("div",{style:{fontSize:28,fontWeight:900,color:i===0?"#FF9500":"#fff",letterSpacing:"-1px",lineHeight:1}},val),
+            React.createElement("div",{style:{fontSize:11,color:"#444",fontWeight:500,marginTop:4}},lbl)
+          ))
         )
       )
     ),
-    // Projects list
     React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"40px 24px"}},
       React.createElement("button",{onClick:()=>setView("newProject"),style:{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"},onMouseEnter:e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";},onMouseLeave:e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}},
         React.createElement("div",{style:{width:44,height:44,background:"#FF9500",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#000",flexShrink:0}},"+"),
         React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",marginBottom:2}},"Create New Project"),React.createElement("div",{style:{fontSize:12,color:"#444"}},"Configure geography, persona depth, and research tier")),
         React.createElement("span",{style:{fontSize:18,color:"#333"}},"→")
       ),
-      projects.length===0?React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🗂"),React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No projects yet"),React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Create your first project to get started"),React.createElement(PBtn,{onClick:()=>setView("newProject")},"Create Project")):
-      React.createElement(React.Fragment,null,
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Your Projects"),React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},projects.length)),
+      projects.length===0 ? React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
+        React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🗂"),
+        React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No projects yet"),
+        React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Create your first project to get started"),
+        React.createElement(PBtn,{onClick:()=>setView("newProject")},"Create Project")
+      ) : React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},
+          React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Your Projects"),
+          React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},projects.length)
+        ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
           projects.map(p=>React.createElement("button",{key:p.id,onClick:()=>{setActiveProj(p);setView("project");},style:{...css.card,padding:22,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
-            React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:15,fontWeight:700,color:"#fff"}},p.name),React.createElement(SBadge,{status:p.status})),React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},p.createdAt)),
-            p.description&&React.createElement("p",{style:{fontSize:12,color:"#666",marginBottom:10,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical",lineHeight:1.5}},p.description),
-            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},(p.tags||[]).map(t=>React.createElement(Pill,{key:t,label:t}))),React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0}},"🔬 "+(p.runs||[]).length+" run"+((p.runs||[]).length!==1?"s":"")))
+            React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:15,fontWeight:700,color:"#fff"}},p.name),React.createElement(SBadge,{status:p.status})),
+              React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},p.createdAt)
+            ),
+            p.description && React.createElement("p",{style:{fontSize:12,color:"#666",marginBottom:10,lineHeight:1.5}},p.description),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+              React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},(p.tags||[]).map(t=>React.createElement(Pill,{key:t,label:t}))),
+              React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0}},"🔬 "+(p.runs||[]).length+" run"+((p.runs||[]).length!==1?"s":""))
+            )
           ))
         )
       )
     )
   );
 
-  if(view==="newProject")return React.createElement("div",{style:css.page},React.createElement(AppHeader,{back:()=>setView("projects"),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>setView("projects")}));
-  if(view==="editProject")return React.createElement("div",{style:css.page},React.createElement(AppHeader,{back:()=>setView("project"),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:editingProj||activeProj,isEdit:true,onSave:handleUpdate,onCancel:()=>setView("project"),onDelete:handleDelete}));
+  if (view==="newProject") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>setView("projects")}));
+  if (view==="editProject") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:editingProj||activeProj,isEdit:true,onSave:handleUpdate,onCancel:()=>setView("project"),onDelete:handleDelete}));
 
   // PROJECT DETAIL
-  if(view==="project"){
-    const proj=projects.find(p=>p.id===activeProj?.id)||activeProj;
+  if (view==="project") {
+    const proj = projects.find(p=>p.id===activeProj?.id)||activeProj;
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
-      React.createElement(AppHeader,{back:()=>setView("projects"),backLabel:"Projects",title:proj.name,right:React.createElement(React.Fragment,null,React.createElement(GBtn,{onClick:()=>{setEditingProj(proj);setView("editProject");}},"Edit"),React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Research"))}),
+      React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:proj.name,right:React.createElement(React.Fragment,null,
+        React.createElement(GBtn,{onClick:()=>{setEditingProj(proj);setView("editProject");}},"Edit"),
+        React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Research")
+      )}),
       React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"32px 24px"}},
         React.createElement("div",{style:{marginBottom:28}},
           React.createElement("h2",{style:{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1}},proj.name,React.createElement("span",{style:{color:"#FF9500"}}, ".")),
           React.createElement("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:12}},React.createElement(SBadge,{status:proj.status}),(proj.tags||[]).map(t=>React.createElement(Pill,{key:t,label:t}))),
-          proj.description&&React.createElement("p",{style:{fontSize:13,color:"#666",lineHeight:1.7,margin:0}},proj.description)
+          proj.description && React.createElement("p",{style:{fontSize:13,color:"#666",lineHeight:1.7,margin:0}},proj.description)
         ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Research Runs"),React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},(proj.runs||[]).length))),
-        (proj.runs||[]).length===0?React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🔬"),React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No runs yet"),React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Run your first synthetic research to generate insights"),React.createElement(PBtn,{onClick:()=>setView("newResearch")},"+ New Research Run")):
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          proj.runs.map(run=>{const t=TIERS[run.tier||2];return React.createElement("button",{key:run.id,onClick:()=>{setActiveRun(run);setView("research");},style:{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
-            React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},run.name),React.createElement("span",{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:`1px solid ${t.badgeBorder}`}},"T"+(run.tier||2))),React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},run.createdAt)),
-            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},React.createElement(Pill,{label:"Geo",value:`${run.geo.country}${run.geo.cities?.length?", "+run.geo.cities[0]:""}`}),run.researchGoal&&React.createElement(Pill,{label:"Goal",value:run.researchGoal}),React.createElement(Pill,{label:"Age",value:`${run.persona.ageMin}–${run.persona.ageMax}`}),run.results?.archetypes&&React.createElement(Pill,{label:"Archetypes",value:run.results.archetypes.length}))
-          );})
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Research Runs"),
+            React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},(proj.runs||[]).length)
+          )
+        ),
+        (proj.runs||[]).length===0 ? React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🔬"),
+          React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No runs yet"),
+          React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Run your first synthetic research to generate insights"),
+          React.createElement(PBtn,{onClick:()=>setView("newResearch")},"+ New Research Run")
+        ) : React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          proj.runs.map(run=>{
+            const t = TIERS[run.tier||2];
+            return React.createElement("button",{key:run.id,onClick:()=>{setActiveRun(run);setView("research");},style:{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
+              React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},run.name),React.createElement("span",{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},"T"+(run.tier||2))),
+                React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},run.createdAt)
+              ),
+              React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+                React.createElement(Pill,{label:"Geo",value:run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:"")}),
+                run.researchGoal && React.createElement(Pill,{label:"Goal",value:run.researchGoal}),
+                React.createElement(Pill,{label:"Age",value:run.persona.ageMin+"–"+run.persona.ageMax}),
+                run.results?.archetypes && React.createElement(Pill,{label:"Archetypes",value:run.results.archetypes.length})
+              )
+            );
+          })
         )
       )
     );
   }
 
-  if(view==="newResearch")return React.createElement("div",{style:css.page},React.createElement(AppHeader,{back:()=>setView("project"),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete}));
+  if (view==="newResearch") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete,apiKey}));
 
   // RESEARCH RESULTS
-  if(view==="research"&&activeRun){
-    const r=activeRun.results,tierCfg=TIERS[activeRun.tier||2];
+  if (view==="research" && activeRun) {
+    const r = activeRun.results, tierCfg = TIERS[activeRun.tier||2];
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
-      React.createElement(AppHeader,{back:()=>setView("project"),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,React.createElement(GBtn,{onClick:()=>triggerPDF(activeRun,activeProj?.name)},"🖨 PDF"),React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Run"))}),
+      React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
+        React.createElement(GBtn,{onClick:()=>triggerPDF(activeRun,activeProj?.name)},"🖨 PDF"),
+        React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Run")
+      )}),
       React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"32px 24px"}},
         React.createElement("div",{style:{marginBottom:24}},
-          React.createElement("h2",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1.1}},activeRun.name,React.createElement("span",{style:{color:"#FF9500"}}, ".")),
+          React.createElement("h2",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1.1}},activeRun.name,React.createElement("span",{style:{color:"#FF9500"}},".")),
           React.createElement("div",{style:{marginBottom:10}},React.createElement(TierBadge,{tier:activeRun.tier})),
-          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},React.createElement(Pill,{label:"Geo",value:`${activeRun.geo.country}${activeRun.geo.cities?.length?", "+activeRun.geo.cities[0]:""}`}),activeRun.researchGoal&&React.createElement(Pill,{label:"Goal",value:activeRun.researchGoal}),React.createElement(Pill,{label:"Age",value:`${activeRun.persona.ageMin}–${activeRun.persona.ageMax}`}),React.createElement(Pill,{label:"Income",value:activeRun.persona.incomeLevel}),activeRun.numberOfPeople&&React.createElement(Pill,{label:"Audience",value:Number(activeRun.numberOfPeople).toLocaleString()}))
+          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            React.createElement(Pill,{label:"Geo",value:activeRun.geo.country+(activeRun.geo.cities?.length?", "+activeRun.geo.cities[0]:"")}),
+            activeRun.researchGoal && React.createElement(Pill,{label:"Goal",value:activeRun.researchGoal}),
+            React.createElement(Pill,{label:"Age",value:activeRun.persona.ageMin+"–"+activeRun.persona.ageMax}),
+            React.createElement(Pill,{label:"Income",value:activeRun.persona.incomeLevel}),
+            activeRun.numberOfPeople && React.createElement(Pill,{label:"Audience",value:Number(activeRun.numberOfPeople).toLocaleString()})
+          )
         ),
         React.createElement(ProviderBadges,{providers:r.dataProviders||[]}),
-        activeRun.tier===3&&React.createElement(VerifiedStats,{stats:r.verifiedStats||[],worldBankRaw:activeRun.verifiedData?.worldBank}),
-        activeRun.tier>=2&&React.createElement(SourcesStrip,{sources:r.searchedSources||[]}),
-        React.createElement(Collapsible,{icon:"🎭",title:"Consumer Archetypes",badge:`${(r.archetypes||[]).length} detected`},
-          (r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return React.createElement("div",{key:i,style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:20,marginBottom:12,borderLeft:`3px solid ${c}`}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},React.createElement("div",{style:{width:28,height:28,background:c,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#000",flexShrink:0}},i+1),React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff",flex:1}},a.name),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:c}},pct+"%")),
-            React.createElement("div",{style:{height:3,background:"#1a1a1a",borderRadius:2,marginBottom:12}},React.createElement("div",{style:{height:3,background:c,borderRadius:2,width:`${pct}%`}})),
-            React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.7,marginBottom:12}},a.description),
-            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},(a.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{fontSize:10,background:`${c}15`,border:`1px solid ${c}30`,borderRadius:10,padding:"2px 10px",color:c,fontWeight:500}},t)))
-          );})
+        activeRun.tier===3 && React.createElement(VerifiedStats,{stats:r.verifiedStats||[],worldBankRaw:activeRun.verifiedData?.worldBank}),
+        activeRun.tier>=2 && React.createElement(SourcesStrip,{sources:r.searchedSources||[]}),
+        React.createElement(Collapsible,{icon:"🎭",title:"Consumer Archetypes",badge:(r.archetypes||[]).length+" detected"},
+          (r.archetypes||[]).map((a,i)=>{
+            const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;
+            return React.createElement("div",{key:i,style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:20,marginBottom:12,borderLeft:"3px solid "+c}},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
+                React.createElement("div",{style:{width:28,height:28,background:c,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#000",flexShrink:0}},i+1),
+                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff",flex:1}},a.name),
+                React.createElement("span",{style:{fontSize:13,fontWeight:700,color:c}},pct+"%")
+              ),
+              React.createElement("div",{style:{height:3,background:"#1a1a1a",borderRadius:2,marginBottom:12}},React.createElement("div",{style:{height:3,background:c,borderRadius:2,width:pct+"%"}})),
+              React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.7,marginBottom:12}},a.description),
+              React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},(a.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{fontSize:10,background:c+"15",border:"1px solid "+c+"30",borderRadius:10,padding:"2px 10px",color:c,fontWeight:500}},t)))
+            );
+          })
         ),
         React.createElement(Collapsible,{icon:"🔍",title:"Insights"},React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.85}},r.insights)),
         React.createElement(Collapsible,{icon:"🚀",title:"Opportunities"},React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.85}},r.opportunities)),
