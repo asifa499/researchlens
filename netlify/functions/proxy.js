@@ -23,8 +23,10 @@ exports.handler = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ error: "Invalid API key" }) };
     }
 
-    // Remove apiKey from the body before forwarding
     delete body.apiKey;
+
+    // Increase max tokens to handle large web search responses
+    body.max_tokens = 8000;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -36,7 +38,19 @@ exports.handler = async (event) => {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+
+    // Make sure we got valid JSON back
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return {
+        statusCode: 500,
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+        body: JSON.stringify({ error: { message: "Invalid JSON from Anthropic: " + text.slice(0, 200) } }),
+      };
+    }
 
     return {
       statusCode: response.status,
