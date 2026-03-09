@@ -624,9 +624,10 @@ function ApiKeyGate({onUnlock}) {
 
   const handleUnlock = () => {
     const k = key.trim();
-    if (!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}
-    if (k.length<40){setError("Key looks too short. Please paste the full key.");return;}
-    localStorage.setItem("rl_apikey",k);
+    if (!k.startsWith("sk-ant-")) { setError("Key must start with sk-ant-..."); return; }
+    if (k.length < 40) { setError("Key looks too short. Please paste the full key."); return; }
+    setError("");
+    localStorage.setItem("rl_apikey", k);
     onUnlock(k);
   };
 
@@ -643,8 +644,7 @@ function ApiKeyGate({onUnlock}) {
         ),
         error && React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
       ),
-      React.createElement("button",{onClick:handleUnlock,disabled:!key.trim(),style:{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},"Unlock ResearchLens →"),
-      React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
+      React.createElement("button",{onClick:handleUnlock,disabled:!key.trim(),style:{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},"Unlock ResearchLens →"),      React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
         React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}},"How to get your API key"),
         [["1","Go to console.anthropic.com"],["2","Sign in or create a free account"],["3","Navigate to API Keys → Create Key"],["4","Copy and paste it above"]].map(([n,t])=>React.createElement("div",{key:n,style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
           React.createElement("div",{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#FF9500",flexShrink:0}},n),
