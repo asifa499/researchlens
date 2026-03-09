@@ -381,16 +381,12 @@ function ApiKeyGate({onUnlock}){
   const[error,setError]=useState("");
   const[testing,setTesting]=useState(false);
 
-  const handleUnlock=async()=>{
+  const handleUnlock=()=>{
     const k=key.trim();
-    if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-");return;}
-    setTesting(true);setError("");
-    try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":k,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:10,messages:[{role:"user",content:"hi"}]})});
-      if(res.status===401){setError("Invalid API key. Please check and try again.");setTesting(false);return;}
-      localStorage.setItem("rl_apikey",k);
-      onUnlock(k);
-    }catch(e){setError("Could not reach Anthropic API. Check your connection.");setTesting(false);}
+    if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}
+    if(k.length<40){setError("Key looks too short. Please paste the full key.");return;}
+    localStorage.setItem("rl_apikey",k);
+    onUnlock(k);
   };
 
   return React.createElement("div",{style:{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
@@ -416,8 +412,7 @@ function ApiKeyGate({onUnlock}){
         error&&React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
       ),
       React.createElement("button",{onClick:handleUnlock,disabled:testing||!key.trim(),style:{width:"100%",background:testing||!key.trim()?"#111":"#FF9500",border:testing||!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:testing||!key.trim()?"#444":"#000",cursor:testing||!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},
-        testing?React.createElement(React.Fragment,null,"Verifying…",React.createElement(Dots)):"Unlock ResearchLens →"
-      ),
+        testing?React.createElement(React.Fragment,null,"Verifying…",React.createElement(Dots)):"Unlock ResearchLens →"      ),
       // Help text
       React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
         React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}},"How to get your API key"),
