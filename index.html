@@ -987,22 +987,90 @@ function ApiKeyGate({onUnlock}) {
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
+// ── ROUTER HELPERS ────────────────────────────────────────────────────────────
+const parseRoute = () => {
+  const p = window.location.pathname.replace(/\/+$/,"") || "/";
+  if (p === "/" || p === "") return {view:"projects"};
+  if (p === "/new-project") return {view:"newProject"};
+  const mProj = p.match(/^\/project\/([^/]+)$/);
+  if (mProj) return {view:"project", projId:mProj[1]};
+  const mEdit = p.match(/^\/project\/([^/]+)\/edit$/);
+  if (mEdit) return {view:"editProject", projId:mEdit[1]};
+  const mNew = p.match(/^\/project\/([^/]+)\/new$/);
+  if (mNew) return {view:"newResearch", projId:mNew[1]};
+  const mRun = p.match(/^\/project\/([^/]+)\/research\/([^/]+)$/);
+  if (mRun) return {view:"research", projId:mRun[1], runId:mRun[2]};
+  return {view:"projects"};
+};
+
+const ROUTE_TITLES = {
+  projects:"ResearchLens",
+  newProject:"New Project — ResearchLens",
+  project:(name)=>name+" — ResearchLens",
+  editProject:(name)=>"Edit "+name+" — ResearchLens",
+  newResearch:"New Research — ResearchLens",
+  research:(name)=>name+" — ResearchLens",
+};
+
 function App() {
-  const [view,setView]=useState("projects");
   const [apiKey,setApiKey]=useState(()=>localStorage.getItem("rl_apikey")||"");
   const [projects,setProjects]=useState([]);
   const [ready,setReady]=useState(false);
-  const [activeProj,setActiveProj]=useState(null);
-  const [activeRun,setActiveRun]=useState(null);
-  const [editingProj,setEditingProj]=useState(null);
   const [toast,setToast]=useState(null);
+
+  // Derive state from URL
+  const [route,setRoute]=useState(parseRoute);
+  const {view,projId,runId}=route;
+
+  const activeProj = projects.find(p=>p.id===projId)||null;
+  const activeRun = activeProj?.runs?.find(r=>r.id===runId)||null;
+
+  const navigate = (path, title) => {
+    window.history.pushState({}, "", path);
+    document.title = title || "ResearchLens";
+    setRoute(parseRoute());
+  };
+
+  // Handle browser back/forward
+  useEffect(()=>{
+    const onPop = () => setRoute(parseRoute());
+    window.addEventListener("popstate", onPop);
+    return ()=>window.removeEventListener("popstate", onPop);
+  },[]);
+
   const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
   useEffect(()=>{sbLoad().then(p=>{setProjects(p);setReady(true);});},[]);
+
   const persist=async(list)=>{setProjects(list);await sbSave(list);};
-  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);setActiveProj(proj);showToast("Project created ✓");setView("project");};
-  const handleUpdate=async data=>{const list=projects.map(p=>p.id===activeProj.id?{...p,...data}:p);await persist(list);setActiveProj(list.find(p=>p.id===activeProj.id));showToast("Saved ✓");setView("project");};
-  const handleDelete=async()=>{await sbDelete(activeProj.id);const list=projects.filter(p=>p.id!==activeProj.id);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");setView("projects");};
-  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===activeProj.id?updProj:p);await persist(list);setActiveProj(updProj);setActiveRun(run);showToast("Report ready ✓");setView("research");};
+
+  const handleCreate=async data=>{
+    const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};
+    const list=[proj,...projects];
+    await persist(list);
+    showToast("Project created ✓");
+    navigate("/project/"+proj.id, ROUTE_TITLES.project(proj.name));
+  };
+  const handleUpdate=async data=>{
+    const list=projects.map(p=>p.id===projId?{...p,...data}:p);
+    await persist(list);
+    showToast("Saved ✓");
+    navigate("/project/"+projId, ROUTE_TITLES.project(data.name));
+  };
+  const handleDelete=async()=>{
+    await sbDelete(projId);
+    const list=projects.filter(p=>p.id!==projId);
+    setProjects(list);
+    try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}
+    showToast("Deleted","warn");
+    navigate("/", ROUTE_TITLES.projects);
+  };
+  const handleRunComplete=async run=>{
+    const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};
+    const list=projects.map(p=>p.id===projId?updProj:p);
+    await persist(list);
+    showToast("Report ready ✓");
+    navigate("/project/"+projId+"/research/"+run.id, ROUTE_TITLES.research(run.name));
+  };
 
   if(!apiKey)return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
   if(!ready)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
@@ -1014,7 +1082,7 @@ function App() {
     React.createElement(Toast,{toast}),
     React.createElement(Header,{right:React.createElement(React.Fragment,null,
       React.createElement(GBtn,{onClick:()=>{localStorage.removeItem("rl_apikey");setApiKey("");},style:{padding:"6px 12px",fontSize:11}},"🔑 Change Key"),
-      React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"8px 18px",fontSize:13}},"+ New Project")
+      React.createElement(PBtn,{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{padding:"8px 18px",fontSize:13}},"+ New Project")
     )}),
     React.createElement("div",{style:{padding:"80px 32px 72px",borderBottom:"1px solid #111",position:"relative",overflow:"hidden"}},
       React.createElement("div",{style:{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle,#1a1a1a 1px,transparent 1px)",backgroundSize:"32px 32px",opacity:0.4,pointerEvents:"none"}}),
@@ -1040,7 +1108,7 @@ function App() {
       )
     ),
     React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"40px 24px"}},
-      React.createElement("button",{onClick:()=>setView("newProject"),style:{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"},onMouseEnter:e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";},onMouseLeave:e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}},
+              React.createElement("button",{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"},onMouseEnter:e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";},onMouseLeave:e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}},
         React.createElement("div",{style:{width:44,height:44,background:"#FF9500",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#000",flexShrink:0}},"+"),
         React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",marginBottom:2}},"Create New Project"),React.createElement("div",{style:{fontSize:12,color:"#444"}},"Configure geography, persona depth, and research tier")),
         React.createElement("span",{style:{fontSize:18,color:"#333"}},"→")
@@ -1049,14 +1117,14 @@ function App() {
         React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🗂"),
         React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No projects yet"),
         React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Create your first project to get started"),
-        React.createElement(PBtn,{onClick:()=>setView("newProject")},"Create Project")
+        React.createElement(PBtn,{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject)},"Create Project")
       ):React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},
           React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Your Projects"),
           React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},projects.length)
         ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          projects.map(p=>React.createElement("button",{key:p.id,onClick:()=>{setActiveProj(p);setView("project");},style:{...css.card,padding:22,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
+          projects.map(p=>React.createElement("button",{key:p.id,onClick:()=>navigate("/project/"+p.id,ROUTE_TITLES.project(p.name)),style:{...css.card,padding:22,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
             React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:15,fontWeight:700,color:"#fff"}},p.name),React.createElement(SBadge,{status:p.status})),
               React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},p.createdAt)
@@ -1072,16 +1140,17 @@ function App() {
     )
   );
 
-  if(view==="newProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>setView("projects")}));
-  if(view==="editProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:editingProj||activeProj,isEdit:true,onSave:handleUpdate,onCancel:()=>setView("project"),onDelete:handleDelete}));
+  if(view==="newProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>navigate("/",ROUTE_TITLES.projects),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>navigate("/",ROUTE_TITLES.projects)}));
+  if(view==="editProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj?.name||"")),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:activeProj||{},isEdit:true,onSave:handleUpdate,onCancel:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj?.name||"")),onDelete:handleDelete}));
 
   if(view==="project"){
-    const proj=projects.find(p=>p.id===activeProj?.id)||activeProj;
+    const proj=activeProj;
+    if(!proj)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}},"Project not found. ",React.createElement("button",{onClick:()=>navigate("/"),style:{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}},"Go home"));
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
-      React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:proj.name,right:React.createElement(React.Fragment,null,
-        React.createElement(GBtn,{onClick:()=>{setEditingProj(proj);setView("editProject");}},"Edit"),
-        React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Research")
+      React.createElement(Header,{back:()=>navigate("/",ROUTE_TITLES.projects),backLabel:"Projects",title:proj.name,right:React.createElement(React.Fragment,null,
+        React.createElement(GBtn,{onClick:()=>navigate("/project/"+projId+"/edit",ROUTE_TITLES.editProject(proj.name))},"Edit"),
+        React.createElement(PBtn,{onClick:()=>navigate("/project/"+projId+"/new",ROUTE_TITLES.newResearch),style:{padding:"8px 18px",fontSize:13}},"+ New Research")
       )}),
       React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"32px 24px"}},
         React.createElement("div",{style:{marginBottom:28}},
@@ -1099,11 +1168,11 @@ function App() {
           React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🔬"),
           React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No runs yet"),
           React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Run your first synthetic research to generate insights"),
-          React.createElement(PBtn,{onClick:()=>setView("newResearch")},"+ New Research Run")
+          React.createElement(PBtn,{onClick:()=>navigate("/project/"+projId+"/new",ROUTE_TITLES.newResearch)},"+ New Research Run")
         ):React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
           proj.runs.map(run=>{
             const t=TIERS[run.tier||2];
-            return React.createElement("button",{key:run.id,onClick:()=>{setActiveRun(run);setView("research");},style:{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
+            return React.createElement("button",{key:run.id,onClick:()=>navigate("/project/"+projId+"/research/"+run.id,ROUTE_TITLES.research(run.name)),style:{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
               React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},
                 React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},run.name),React.createElement("span",{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},"T"+(run.tier||2))),
                 React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},run.createdAt)
@@ -1121,15 +1190,16 @@ function App() {
     );
   }
 
-  if(view==="newResearch")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete,apiKey}));
+  if(view==="newResearch")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj?.name||"")),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete,apiKey}));
 
-  if(view==="research"&&activeRun){
+  if(view==="research"){
+    if(!activeProj||!activeRun)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}},"Run not found. ",React.createElement("button",{onClick:()=>navigate("/"),style:{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}},"Go home"));
     const r=activeRun.results, tierCfg=TIERS[activeRun.tier||2];
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
-      React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
+      React.createElement(Header,{back:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj.name)),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
         React.createElement(GBtn,{onClick:()=>triggerPDF(activeRun,activeProj?.name)},"🖨 PDF"),
-        React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Run")
+        React.createElement(PBtn,{onClick:()=>navigate("/project/"+projId+"/new",ROUTE_TITLES.newResearch),style:{padding:"8px 18px",fontSize:13}},"+ New Run")
       )}),
       React.createElement("div",{style:{maxWidth:700,margin:"0 auto",padding:"32px 24px"}},
         // Run header
