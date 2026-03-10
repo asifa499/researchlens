@@ -519,7 +519,7 @@ function ResearchForm({onRun,apiKey}) {
       if (useWebSearch) body.tools = [{"type":"web_search_20250305","name":"web_search"}];
       // Send apiKey inside body so the Netlify proxy can forward it server-side
 body.apiKey = apiKey;
-const res = await fetch("/.netlify/functions/proxy", {
+const res = await fetch("https://rl-proxy.asif-a-aliyev.workers.dev", {
   method: "POST",
   headers: {"Content-Type": "application/json"},
   body: JSON.stringify(body)
