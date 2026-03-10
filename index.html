@@ -4,7 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ResearchLens</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='32' fill='%23FF9500'/><circle cx='32' cy='32' r='13' fill='none' stroke='%23000' stroke-width='7'/></svg>"/><script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='32' fill='%23FF9500'/><circle cx='32' cy='32' r='14' fill='none' stroke='%23000' stroke-width='5'/><line x1='42' y1='42' x2='56' y2='56' stroke='%23000' stroke-width='5' stroke-linecap='round'/><circle cx='32' cy='32' r='4' fill='%23000'/></svg>"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
@@ -317,10 +318,12 @@ const buildPrompt = (f, verifiedData) => {
   const geoStr=f.geo.country+(f.geo.cities?.length?", "+f.geo.cities.join(" / "):"");
   const multiLines=PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?field.label+": "+vals.join(", "):null;})).filter(Boolean).join(" | ");
   const baseInputs="Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
-  if(f.tier===1) return {prompt:"You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":1,\"language\":\"<language name>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\",\"solutions\":\"350-450 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:false};
-  if(f.tier===2) return {prompt:"You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":2,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 8 real sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\",\"solutions\":\"400-500 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:true};
+  const solutionsSchema = `"solutions":{"digital":"2-3 sentences on digital & technology strategy","marketing":"2-3 sentences on marketing & brand strategy","product":"2-3 sentences on product & pricing strategy","customerExperience":"2-3 sentences on customer experience strategy","distribution":"2-3 sentences on distribution & sales strategy","partnerships":"2-3 sentences on partnerships & expansion strategy"}`;
+  const solutionsRule = "solutions must be a JSON object with exactly these 6 keys: digital, marketing, product, customerExperience, distribution, partnerships. Each value is 2-3 sentences of clean prose.";
+  if(f.tier===1) return {prompt:"You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":1,\"language\":\"<language name>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\","+solutionsSchema+"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags. "+solutionsRule+"\n"+baseInputs,useWebSearch:false};
+  if(f.tier===2) return {prompt:"You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":2,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 8 real sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\","+solutionsSchema+"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags. "+solutionsRule+"\n"+baseInputs,useWebSearch:true};
   const buildVC=(vd)=>{if(!vd)return "";const lines=[];const rc=vd.restCountries||{};if(rc.name)lines.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);if(rc.population)lines.push("Population: "+Number(rc.population).toLocaleString());const wb=vd.worldBank||{};const wbF=Object.values(wb).filter(v=>v&&v.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");if(wbF.length)lines.push("World Bank:\n  "+wbF.join("\n  "));return lines.join("\n");};
-  return {prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":3,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 rich sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\",\"solutions\":\"450-550 word prose\"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:true};
+  return {prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":3,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 rich sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\","+solutionsSchema+"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists, no <cite> tags. "+solutionsRule+"\n"+baseInputs,useWebSearch:true};
 };
 
 const triggerPDF = (run, projName) => {
@@ -875,6 +878,84 @@ function ProseSection({icon, title, text, accentColor, gradientFrom, gradientTo}
   );
 }
 
+// ── SOLUTIONS SECTION ─────────────────────────────────────────────────────────
+const SOLUTION_SUBSECTIONS = [
+  {key:"digital",        icon:"💻", label:"Digital & Technology",    color:"#007AFF", g1:"#007AFF", g2:"#0055FF"},
+  {key:"marketing",      icon:"📣", label:"Marketing & Brand",       color:"#FF2D55", g1:"#FF2D55", g2:"#FF375F"},
+  {key:"product",        icon:"📦", label:"Product & Pricing",       color:"#FF9500", g1:"#FF9500", g2:"#FF6B00"},
+  {key:"customerExperience",icon:"⭐",label:"Customer Experience",   color:"#FFB340", g1:"#FFB340", g2:"#FF9500"},
+  {key:"distribution",   icon:"🚚", label:"Distribution & Sales",    color:"#34C759", g1:"#34C759", g2:"#30D158"},
+  {key:"partnerships",   icon:"🤝", label:"Partnerships & Expansion",color:"#AF52DE", g1:"#AF52DE", g2:"#BF5AF2"},
+];
+
+function SolutionCard({subsection, text, index}) {
+  const [hovered, setHovered] = useState(false);
+  const clean = stripCites(text || "");
+  if (!clean) return null;
+  const {icon, label, color, g1, g2} = subsection;
+  return React.createElement("div",{
+    onMouseEnter:()=>setHovered(true),
+    onMouseLeave:()=>setHovered(false),
+    style:{
+      background: hovered?"#161616":"#0d0d0d",
+      border:"1px solid "+(hovered?color+"44":"#1e1e1e"),
+      borderRadius:16, padding:0, overflow:"hidden",
+      transition:"all .25s",
+      boxShadow: hovered?"0 4px 24px "+color+"18":"none",
+      animation:"fadeInUp .35s ease both",
+      animationDelay:(index*0.07)+"s"
+    }},
+    React.createElement("div",{style:{height:2,background:"linear-gradient(90deg,"+g1+","+g2+")"}}),
+    React.createElement("div",{style:{padding:"16px 18px"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
+        React.createElement("div",{style:{
+          width:30,height:30,borderRadius:9,
+          background:"linear-gradient(135deg,"+g1+"25,"+g2+"12)",
+          border:"1px solid "+color+"30",
+          display:"flex",alignItems:"center",justifyContent:"center",fontSize:14
+        }},icon),
+        React.createElement("span",{style:{fontSize:12,fontWeight:700,color:color,letterSpacing:"0.02em"}},label)
+      ),
+      React.createElement("p",{style:{fontSize:13,color:"#a0a0a0",lineHeight:1.8,margin:0}},clean)
+    )
+  );
+}
+
+function SolutionsSection({solutions}) {
+  const [open, setOpen] = useState(true);
+  // Handle both old string format and new object format
+  if (!solutions) return null;
+  const isObject = typeof solutions === "object" && !Array.isArray(solutions);
+
+  return React.createElement("div",{style:{
+    background:"#0d0d0d",border:"1px solid #1e1e1e",
+    borderRadius:20,overflow:"hidden",marginBottom:16
+  }},
+    // Header
+    React.createElement("button",{
+      onClick:()=>setOpen(o=>!o),
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,rgba(255,149,0,0.2),rgba(255,107,0,0.1))",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"💡"),
+        React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},"Solutions"),
+        isObject && React.createElement("span",{style:{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}},"6 strategies")
+      ),
+      React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
+    ),
+    open && React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,rgba(255,149,0,0.4),rgba(255,107,0,0.2),transparent)"}}),
+    open && React.createElement("div",{style:{padding:"16px 18px"}},
+      isObject
+        ? React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            SOLUTION_SUBSECTIONS.map((sub,i)=>
+              React.createElement(SolutionCard,{key:sub.key,subsection:sub,text:solutions[sub.key],index:i})
+            )
+          )
+        // Fallback: old string format
+        : React.createElement(ProseSection,{icon:"💡",title:"Solutions",text:solutions,accentColor:"#FF9500",gradientFrom:"#FF9500",gradientTo:"#FF6B00"})
+    )
+  );
+}
+
 // ── API KEY GATE ──────────────────────────────────────────────────────────────
 function ApiKeyGate({onUnlock}) {
   const [key,setKey]=useState(""); const [show,setShow]=useState(false); const [error,setError]=useState("");
@@ -1083,7 +1164,7 @@ function App() {
         ),
         React.createElement(ProseSection,{icon:"🔍",title:"Insights",text:r.insights,accentColor:"#007AFF",gradientFrom:"#007AFF",gradientTo:"#0055FF"}),
         React.createElement(ProseSection,{icon:"🚀",title:"Opportunities",text:r.opportunities,accentColor:"#34C759",gradientFrom:"#34C759",gradientTo:"#30D158"}),
-        React.createElement(ProseSection,{icon:"💡",title:"Solutions",text:r.solutions,accentColor:"#FF9500",gradientFrom:"#FF9500",gradientTo:"#FF6B00"}),
+        React.createElement(SolutionsSection,{solutions:r.solutions}),
         React.createElement("button",{onClick:()=>triggerPDF(activeRun,activeProj?.name),style:{width:"100%",background:"#FF9500",border:"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:"#000",cursor:"pointer",marginTop:8,letterSpacing:"-0.3px"}},"🖨 Export as PDF Presentation")
       )
     );
