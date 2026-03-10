@@ -518,14 +518,10 @@ function ResearchForm({onRun,apiKey}) {
       const body = {model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
       if (useWebSearch) body.tools = [{"type":"web_search_20250305","name":"web_search"}];
       // Send apiKey inside body so the Netlify proxy can forward it server-side
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+body.apiKey = apiKey;
+const res = await fetch("/.netlify/functions/proxy", {
   method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-    "anthropic-beta": "interleaved-thinking-2025-05-14"
-  },
+  headers: {"Content-Type": "application/json"},
   body: JSON.stringify(body)
 });
       const data = await res.json();
