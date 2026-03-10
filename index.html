@@ -12,11 +12,17 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
 body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
 @keyframes rl-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes float{0%,100%{transform:translateY(0px) rotate(0deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 select option{background:#111;color:#fff}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:#000}
 ::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
 textarea,input,select,button{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
+.prose-card p{margin-bottom:14px;line-height:1.9;font-size:13.5px;color:#aaa}
+.prose-card p:last-child{margin-bottom:0}
+.stat-shine{background:linear-gradient(90deg,#34C759,#00E676,#34C759);background-size:200%;animation:shimmer 2s infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 </style>
 </head>
 <body>
@@ -24,36 +30,130 @@ textarea,input,select,button{font-family:-apple-system,BlinkMacSystemFont,'SF Pr
 <script type="text/babel">
 const {useState, useEffect, useRef} = React;
 
-// ── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SB_URL = "https://kdfmsqftwqjkcoonidul.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZm1zcWZ0d3Fqa2Nvb25pZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjc0OTEsImV4cCI6MjA4ODY0MzQ5MX0.bnNns9UePVdJ5dsg3UAd9TiRo6BLIEP4VOwTQv4AlGg";
 const SB_HEADERS = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
 
 const sbLoad = async () => {
-  try {
-    const res = await fetch(SB_URL+"/rest/v1/projects?order=created_at.desc", {headers: SB_HEADERS});
-    if (res.ok) { const rows = await res.json(); return rows.map(r => r.data); }
-  } catch(_) {}
-  try { const d = localStorage.getItem("rl_v1"); return d ? JSON.parse(d) : []; } catch(_) { return []; }
+  try { const res = await fetch(SB_URL+"/rest/v1/projects?order=created_at.desc",{headers:SB_HEADERS}); if(res.ok){const rows=await res.json();return rows.map(r=>r.data);} } catch(_) {}
+  try { const d=localStorage.getItem("rl_v1"); return d?JSON.parse(d):[]; } catch(_){return [];}
 };
-
 const sbSave = async (list) => {
-  try {
-    await fetch(SB_URL+"/rest/v1/projects", {
-      method:"POST",
-      headers:{...SB_HEADERS,"Prefer":"resolution=merge-duplicates"},
-      body: JSON.stringify(list.map(p => ({id:p.id, data:p})))
-    });
-  } catch(_) {}
-  try { localStorage.setItem("rl_v1", JSON.stringify(list)); } catch(_) {}
+  try { await fetch(SB_URL+"/rest/v1/projects",{method:"POST",headers:{...SB_HEADERS,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(list.map(p=>({id:p.id,data:p})))}); } catch(_) {}
+  try { localStorage.setItem("rl_v1",JSON.stringify(list)); } catch(_) {}
 };
+const sbDelete = async (id) => { try{await fetch(SB_URL+"/rest/v1/projects?id=eq."+id,{method:"DELETE",headers:SB_HEADERS});}catch(_){} };
 
-const sbDelete = async (id) => {
-  try { await fetch(SB_URL+"/rest/v1/projects?id=eq."+id, {method:"DELETE", headers:SB_HEADERS}); } catch(_) {}
-};
-
-// ── CONSTANTS ────────────────────────────────────────────────────────────────
 const ARCH_COLORS = ["#FF9500","#FF6B00","#FFB340","#FF3B30","#34C759","#007AFF","#AF52DE","#FF2D55"];
+const ARCH_GRADIENTS = [
+  ["#FF9500","#FF6B00"],["#FF6B00","#FF3B30"],["#FFB340","#FF9500"],["#FF3B30","#FF2D55"],
+  ["#34C759","#30D158"],["#007AFF","#0055FF"],["#AF52DE","#BF5AF2"],["#FF2D55","#FF375F"]
+];
+
+// 3D SVG illustrations for archetypes
+const ARCH_ILLUSTRATIONS = [
+  // Professional/Tech
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g0" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="28" ry="6" fill="${c1}" opacity="0.15"/>
+    <rect x="18" y="20" width="44" height="32" rx="4" fill="url(#g0)" opacity="0.9"/>
+    <rect x="22" y="24" width="36" height="20" rx="2" fill="#000" opacity="0.5"/>
+    <rect x="25" y="27" width="8" height="2" rx="1" fill="${c1}" opacity="0.8"/>
+    <rect x="25" y="31" width="14" height="2" rx="1" fill="#fff" opacity="0.3"/>
+    <rect x="25" y="35" width="10" height="2" rx="1" fill="#fff" opacity="0.2"/>
+    <rect x="36" y="27" width="6" height="6" rx="1" fill="${c2}" opacity="0.6"/>
+    <rect x="34" y="52" width="12" height="4" rx="1" fill="url(#g0)" opacity="0.7"/>
+    <rect x="26" y="56" width="28" height="3" rx="1.5" fill="${c1}" opacity="0.4"/>
+    <circle cx="58" cy="26" r="8" fill="#000" opacity="0.3"/>
+    <circle cx="58" cy="26" r="6" fill="url(#g0)" opacity="0.8"/>
+    <path d="M55 26 L57 28 L62 23" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </svg>`,
+  // Family/Traditional
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="70" rx="30" ry="5" fill="${c1}" opacity="0.12"/>
+    <rect x="20" y="35" width="40" height="28" rx="3" fill="url(#g1)" opacity="0.85"/>
+    <polygon points="16,38 40,18 64,38" fill="${c1}" opacity="0.7"/>
+    <rect x="32" y="48" width="10" height="15" rx="2" fill="#000" opacity="0.4"/>
+    <rect x="22" y="42" width="8" height="8" rx="1" fill="#fff" opacity="0.2"/>
+    <rect x="50" y="42" width="8" height="8" rx="1" fill="#fff" opacity="0.2"/>
+    <circle cx="40" cy="30" r="3" fill="#fff" opacity="0.6"/>
+  </svg>`,
+  // Youth/Social
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="25" ry="5" fill="${c1}" opacity="0.12"/>
+    <rect x="24" y="18" width="32" height="48" rx="6" fill="url(#g2)" opacity="0.9"/>
+    <rect x="27" y="22" width="26" height="36" rx="3" fill="#000" opacity="0.45"/>
+    <circle cx="40" cy="61" r="3" fill="${c1}" opacity="0.7"/>
+    <rect x="36" y="19" width="8" height="2" rx="1" fill="#000" opacity="0.4"/>
+    <circle cx="33" cy="34" r="4" fill="${c1}" opacity="0.5"/>
+    <circle cx="40" cy="30" r="5" fill="${c2}" opacity="0.4"/>
+    <circle cx="47" cy="36" r="3" fill="${c1}" opacity="0.6"/>
+    <path d="M30 42 Q40 38 50 42" stroke="${c1}" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round"/>
+  </svg>`,
+  // Executive/Premium
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
+    <circle cx="40" cy="28" r="14" fill="url(#g3)" opacity="0.85"/>
+    <circle cx="40" cy="28" r="9" fill="#000" opacity="0.35"/>
+    <circle cx="40" cy="28" r="4" fill="${c1}" opacity="0.8"/>
+    <rect x="32" y="44" width="16" height="18" rx="4" fill="url(#g3)" opacity="0.7"/>
+    <path d="M28 44 Q24 52 28 58" stroke="${c1}" stroke-width="2" fill="none" opacity="0.5"/>
+    <path d="M52 44 Q56 52 52 58" stroke="${c1}" stroke-width="2" fill="none" opacity="0.5"/>
+    <path d="M36 50 L38 53 L44 47" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </svg>`,
+  // Rural/Agricultural  
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="28" ry="5" fill="${c1}" opacity="0.12"/>
+    <circle cx="40" cy="30" r="16" fill="url(#g4)" opacity="0.2"/>
+    <path d="M40 14 L40 52" stroke="${c1}" stroke-width="2" opacity="0.6"/>
+    <path d="M40 24 Q52 18 54 28 Q44 26 40 30" fill="${c1}" opacity="0.7"/>
+    <path d="M40 32 Q28 26 26 36 Q36 34 40 38" fill="${c2}" opacity="0.6"/>
+    <circle cx="40" cy="52" r="5" fill="url(#g4)" opacity="0.9"/>
+    <path d="M20 58 Q40 48 60 58" stroke="${c1}" stroke-width="1.5" fill="none" opacity="0.3" stroke-linecap="round"/>
+  </svg>`,
+  // Digital/Startup
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
+    <polygon points="40,14 62,26 62,50 40,62 18,50 18,26" fill="url(#g5)" opacity="0.8"/>
+    <polygon points="40,20 56,29 56,47 40,56 24,47 24,29" fill="#000" opacity="0.4"/>
+    <circle cx="40" cy="38" r="8" fill="url(#g5)" opacity="0.7"/>
+    <circle cx="40" cy="38" r="4" fill="#fff" opacity="0.3"/>
+    <circle cx="28" cy="30" r="2" fill="${c1}" opacity="0.6"/>
+    <circle cx="52" cy="30" r="2" fill="${c1}" opacity="0.6"/>
+    <circle cx="28" cy="46" r="2" fill="${c2}" opacity="0.6"/>
+    <circle cx="52" cy="46" r="2" fill="${c2}" opacity="0.6"/>
+  </svg>`,
+  // Creative/Arts
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g6" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
+    <circle cx="30" cy="32" r="12" fill="url(#g6)" opacity="0.7"/>
+    <circle cx="50" cy="32" r="12" fill="${c2}" opacity="0.5"/>
+    <circle cx="40" cy="46" r="12" fill="${c1}" opacity="0.6"/>
+    <circle cx="40" cy="36" r="6" fill="#fff" opacity="0.15"/>
+    <circle cx="38" cy="34" r="2" fill="#fff" opacity="0.4"/>
+  </svg>`,
+  // Senior/Experienced
+  (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g7" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
+    <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
+    <rect x="22" y="22" width="36" height="40" rx="8" fill="url(#g7)" opacity="0.8"/>
+    <rect x="28" y="28" width="24" height="16" rx="3" fill="#000" opacity="0.35"/>
+    <rect x="31" y="31" width="6" height="4" rx="1" fill="${c1}" opacity="0.6"/>
+    <rect x="39" y="31" width="10" height="2" rx="1" fill="#fff" opacity="0.3"/>
+    <rect x="39" y="35" width="7" height="2" rx="1" fill="#fff" opacity="0.2"/>
+    <rect x="28" y="48" width="24" height="2" rx="1" fill="#fff" opacity="0.15"/>
+    <rect x="28" y="52" width="16" height="2" rx="1" fill="#fff" opacity="0.1"/>
+    <circle cx="52" cy="22" r="7" fill="url(#g7)"/>
+    <path d="M49 22 L51 24 L56 19" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </svg>`
+];
+
 const TIERS = {
   1:{id:1,label:"AI Only",icon:"🧠",badge:"Synthetic · AI-generated",badgeColor:"#888",badgeBg:"rgba(136,136,136,0.1)",badgeBorder:"rgba(136,136,136,0.2)",desc:"Fast internal ideation",time:"~8 sec",dot:"#888",providers:[]},
   2:{id:2,label:"AI + Web Search",icon:"🌐",badge:"Grounded · Live web data",badgeColor:"#FF9500",badgeBg:"rgba(255,149,0,0.1)",badgeBorder:"rgba(255,149,0,0.25)",desc:"Market entry & client reports",time:"~20–35 sec",dot:"#FF9500",providers:[]},
@@ -119,8 +219,8 @@ const PERSONA_GROUPS = [
   ]}
 ];
 const emptyPersona = () => {
-  const p = {ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};
-  PERSONA_GROUPS.forEach(g => g.fields.forEach(f => { if(f.type==="multi") p[f.key]=[]; }));
+  const p={ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};
+  PERSONA_GROUPS.forEach(g=>g.fields.forEach(f=>{if(f.type==="multi")p[f.key]=[];}));
   return p;
 };
 const COUNTRY_CITIES = {
@@ -173,67 +273,65 @@ const COUNTRY_CITIES = {
 const ALL_COUNTRIES = Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
 const emptyRForm = () => ({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
 
-// ── VERIFIED DATA FETCHER ────────────────────────────────────────────────────
+// Strip <cite ...>...</cite> tags from text
+const stripCites = (text) => {
+  if (!text) return "";
+  return text.replace(/<cite[^>]*>(.*?)<\/cite>/gs, '$1').replace(/<\/?cite[^>]*>/g,'');
+};
+
+// Convert prose text to paragraphs, stripping cite tags
+const parseProse = (text) => {
+  if (!text) return [];
+  const clean = stripCites(text);
+  return clean.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+};
+
 const fetchVerifiedData = async (form, onProgress) => {
   const country = form.geo.country.trim();
   const results = {worldBank:{},restCountries:{},exchangeRate:{},fetchedAt:new Date().toISOString()};
   try {
     onProgress("Fetching country profile…");
     const res = await fetch("https://restcountries.com/v3.1/name/"+encodeURIComponent(country)+"?fullText=false&fields=name,capital,region,subregion,population,area,languages,currencies,cca2,cca3");
-    if (res.ok) {
-      const data = await res.json(); const c = data[0];
-      results.restCountries = {name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),currencies:Object.entries(c.currencies||{}).map(([k,v])=>v.name+" ("+( v.symbol||k)+")"),cca3:c.cca3};
-    }
-  } catch(e) { results.restCountries.error = e.message; }
-  const ISO = results.restCountries?.cca3 || country.slice(0,3).toUpperCase();
+    if (res.ok) { const data=await res.json(); const c=data[0]; results.restCountries={name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),currencies:Object.entries(c.currencies||{}).map(([k,v])=>v.name+" ("+(v.symbol||k)+")"),cca3:c.cca3}; }
+  } catch(e){results.restCountries.error=e.message;}
+  const ISO = results.restCountries?.cca3||country.slice(0,3).toUpperCase();
   const WB = [["NY.GDP.MKTP.CD","GDP (current USD)"],["NY.GDP.PCAP.CD","GDP per capita"],["FP.CPI.TOTL.ZG","Inflation (%)"],["SP.URB.TOTL.IN.ZS","Urban population (%)"],["IT.NET.USER.ZS","Internet users (%)"],["SP.POP.TOTL","Total population"],["SL.UEM.TOTL.ZS","Unemployment (%)"]];
   try {
     onProgress("Fetching World Bank indicators…");
     const wbR = await Promise.all(WB.map(([code])=>fetch("https://api.worldbank.org/v2/country/"+ISO+"/indicator/"+code+"?format=json&mrv=3&per_page=3").then(r=>r.ok?r.json():null).catch(()=>null)));
-    const wb = {};
+    const wb={};
     wbR.forEach((data,i)=>{if(!data||!data[1])return;const[code,label]=WB[i];const entries=data[1].filter(d=>d.value!==null);if(entries.length>0)wb[code]={label,value:entries[0].value,year:entries[0].date};});
-    results.worldBank = wb;
-  } catch(e) { results.worldBank.error = e.message; }
+    results.worldBank=wb;
+  } catch(e){results.worldBank.error=e.message;}
   try {
     onProgress("Fetching exchange rates…");
-    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
-    if (fxRes.ok) { const fx = await fxRes.json(); results.exchangeRate = {base:"USD",lastUpdate:fx.time_last_update_utc}; }
-  } catch(e) { results.exchangeRate.error = e.message; }
+    const fxRes=await fetch("https://open.er-api.com/v6/latest/USD");
+    if(fxRes.ok){const fx=await fxRes.json();results.exchangeRate={base:"USD",lastUpdate:fx.time_last_update_utc};}
+  } catch(e){results.exchangeRate.error=e.message;}
   onProgress("Structuring verified context…");
   return results;
 };
 
-// ── BUILD PROMPT ─────────────────────────────────────────────────────────────
 const buildPrompt = (f, verifiedData) => {
-  const lang = f.language==="auto" ? "Detect the primary local language of "+f.geo.country+" and write ALL prose in that language. Keep JSON keys in English." : f.language==="en" ? "Write all prose in English." : "Write ALL prose in language code \""+f.language+"\". Keep JSON keys in English.";
-  const p = f.persona;
-  const geoStr = f.geo.country + (f.geo.cities?.length ? ", "+f.geo.cities.join(" / ") : "");
-  const multiLines = PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?field.label+": "+vals.join(", "):null;})).filter(Boolean).join(" | ");
-  const baseInputs = "Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
-  if (f.tier===1) return {prompt:"You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":1,\"language\":\"<language name>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\",\"solutions\":\"350-450 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:false};
-  if (f.tier===2) return {prompt:"You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":2,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 8 real sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\",\"solutions\":\"400-500 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:true};
-  const buildVC = (vd) => {
-    if (!vd) return "";
-    const lines = []; const rc = vd.restCountries||{};
-    if (rc.name) lines.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);
-    if (rc.population) lines.push("Population: "+Number(rc.population).toLocaleString());
-    const wb = vd.worldBank||{}; const wbF = Object.values(wb).filter(v=>v&&v.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");
-    if (wbF.length) lines.push("World Bank:\n  "+wbF.join("\n  "));
-    return lines.join("\n");
-  };
-  return {prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":3,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 rich sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\",\"solutions\":\"450-550 word prose\"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists.\n"+baseInputs, useWebSearch:true};
+  const lang = f.language==="auto"?"Detect the primary local language of "+f.geo.country+" and write ALL prose in that language. Keep JSON keys in English.":f.language==="en"?"Write all prose in English.":"Write ALL prose in language code \""+f.language+"\". Keep JSON keys in English.";
+  const p=f.persona;
+  const geoStr=f.geo.country+(f.geo.cities?.length?", "+f.geo.cities.join(" / "):"");
+  const multiLines=PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?field.label+": "+vals.join(", "):null;})).filter(Boolean).join(" | ");
+  const baseInputs="Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
+  if(f.tier===1) return {prompt:"You are a world-class consumer & market research analyst. Generate a comprehensive synthetic consumer research report.\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":1,\"language\":\"<language name>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\",\"solutions\":\"350-450 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:false};
+  if(f.tier===2) return {prompt:"You are a world-class consumer & market research analyst with live web search. Use web_search tool multiple times.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":2,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 8 real sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 rich sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\",\"solutions\":\"400-500 word prose\"}\nRules: archetypes min 2, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:true};
+  const buildVC=(vd)=>{if(!vd)return "";const lines=[];const rc=vd.restCountries||{};if(rc.name)lines.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);if(rc.population)lines.push("Population: "+Number(rc.population).toLocaleString());const wb=vd.worldBank||{};const wbF=Object.values(wb).filter(v=>v&&v.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");if(wbF.length)lines.push("World Bank:\n  "+wbF.join("\n  "));return lines.join("\n");};
+  return {prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + use web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nIMPORTANT: Do NOT use any XML tags like <cite> in your output. Write clean prose only.\nSchema (return ONLY this JSON, no markdown fences):\n{\"tier\":3,\"language\":\"<language name>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 rich sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\",\"solutions\":\"450-550 word prose\"}\nRules: archetypes min 3, sharePercent sums to 100, no bullet lists, no <cite> tags.\n"+baseInputs,useWebSearch:true};
 };
 
-// ── PDF ───────────────────────────────────────────────────────────────────────
 const triggerPDF = (run, projName) => {
-  const r = run.results, geo = run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:""), tier = TIERS[run.tier||2];
-  const archHTML = (r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return "<div style='background:#111;border-radius:12px;padding:18px;border-left:4px solid "+c+";margin-bottom:14px'><div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'><strong style='font-size:13px;color:#fff;flex:1'>"+a.name+"</strong><span style='font-size:12px;font-weight:700;color:"+c+"'>"+pct+"%</span></div><p style='font-size:12px;color:#888;line-height:1.6;margin-bottom:10px'>"+a.description+"</p><div style='display:flex;flex-wrap:wrap;gap:4px'>"+(a.traits||[]).map(t=>"<span style='font-size:10px;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;color:#ccc'>"+t+"</span>").join("")+"</div></div>";}).join("");
-  const prose = t => (t||"").replace(/\n\n/g,"</p><p style='margin-top:12px'>").replace(/\n/g," ");
-  const html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#000;color:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div style='padding:64px;background:#000;min-height:100vh;page-break-after:always'><div style='font-size:14px;font-weight:800;color:#FF9500;margin-bottom:40px'>● ResearchLens</div><div style='font-size:56px;font-weight:900;line-height:1.0;letter-spacing:-2px;margin-bottom:20px'>"+(run.name||"Research Report")+"<br><span style='color:#FF9500'>"+geo+".</span></div><div style='font-size:16px;color:#888;margin-bottom:40px'>"+run.persona.ageMin+"–"+run.persona.ageMax+" yrs · "+run.persona.incomeLevel+"</div><div style='display:flex;gap:40px'>"+ [["Project",projName||"—"],["Geography",geo],["Date",run.createdAt],["Tier","Tier "+(run.tier||2)+" — "+tier.label]].map(([l,v])=>"<div><div style='font-size:9px;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px'>"+l+"</div><div style='font-size:14px;color:#fff;font-weight:600'>"+v+"</div></div>").join("")+"</div></div>"+[["🎭","Archetypes",archHTML],["🔍","Insights","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.insights)+"</p>"],["🚀","Opportunities","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.opportunities)+"</p>"],["💡","Solutions","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.solutions)+"</p>"]].map(([icon,title,body])=>"<div style='padding:52px 64px;background:#000;page-break-after:always'><div style='font-size:28px;font-weight:900;margin-bottom:32px;color:#fff'>"+icon+" "+title+"</div>"+body+"</div>").join("")+"</body></html>";
-  const w = window.open("","_blank"); w.document.write(html); w.document.close(); w.onload = () => { w.focus(); w.print(); };
+  const r=run.results, geo=run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:""), tier=TIERS[run.tier||2];
+  const archHTML=(r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return "<div style='background:#111;border-radius:12px;padding:18px;border-left:4px solid "+c+";margin-bottom:14px'><div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'><strong style='font-size:13px;color:#fff;flex:1'>"+a.name+"</strong><span style='font-size:12px;font-weight:700;color:"+c+"'>"+pct+"%</span></div><p style='font-size:12px;color:#888;line-height:1.6;margin-bottom:10px'>"+stripCites(a.description)+"</p><div style='display:flex;flex-wrap:wrap;gap:4px'>"+(a.traits||[]).map(t=>"<span style='font-size:10px;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;color:#ccc'>"+t+"</span>").join("")+"</div></div>";}).join("");
+  const prose=t=>(stripCites(t)||"").replace(/\n\n/g,"</p><p style='margin-top:12px'>").replace(/\n/g," ");
+  const html="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#000;color:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div style='padding:64px;background:#000;min-height:100vh;page-break-after:always'><div style='font-size:14px;font-weight:800;color:#FF9500;margin-bottom:40px'>● ResearchLens</div><div style='font-size:56px;font-weight:900;line-height:1.0;letter-spacing:-2px;margin-bottom:20px'>"+(run.name||"Research Report")+"<br><span style='color:#FF9500'>"+geo+".</span></div><div style='font-size:16px;color:#888;margin-bottom:40px'>"+run.persona.ageMin+"–"+run.persona.ageMax+" yrs · "+run.persona.incomeLevel+"</div><div style='display:flex;gap:40px'>"+ [["Project",projName||"—"],["Geography",geo],["Date",run.createdAt],["Tier","Tier "+(run.tier||2)+" — "+tier.label]].map(([l,v])=>"<div><div style='font-size:9px;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px'>"+l+"</div><div style='font-size:14px;color:#fff;font-weight:600'>"+v+"</div></div>").join("")+"</div></div>"+[["🎭","Archetypes",archHTML],["🔍","Insights","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.insights)+"</p>"],["🚀","Opportunities","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.opportunities)+"</p>"],["💡","Solutions","<p style='font-size:13.5px;line-height:1.8;color:#aaa'>"+prose(r.solutions)+"</p>"]].map(([icon,title,body])=>"<div style='padding:52px 64px;background:#000;page-break-after:always'><div style='font-size:28px;font-weight:900;margin-bottom:32px;color:#fff'>"+icon+" "+title+"</div>"+body+"</div>").join("")+"</body></html>";
+  const w=window.open("","_blank"); w.document.write(html); w.document.close(); w.onload=()=>{w.focus();w.print();};
 };
 
-// ── BASE STYLES ───────────────────────────────────────────────────────────────
 const css = {
   page:{minHeight:"100vh",background:"#000",color:"#fff"},
   card:{background:"#111",border:"1px solid #222",borderRadius:16},
@@ -241,33 +339,32 @@ const css = {
   lbl:{display:"block",fontSize:12,color:"#666",marginBottom:6,fontWeight:500}
 };
 
-// ── UI COMPONENTS ─────────────────────────────────────────────────────────────
 function Inp({label,value,onChange,placeholder,type="text",min,rows}) {
-  const [f,setF] = useState(false);
-  const s = {...css.inp, borderColor:f?"#FF9500":"#222", boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none", resize:rows?"none":undefined};
-  if (rows) return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("textarea",{value,onChange,placeholder,rows,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
-  return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("input",{type,min,value,onChange,placeholder,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
+  const [f,setF]=useState(false);
+  const s={...css.inp,borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none",resize:rows?"none":undefined};
+  if(rows) return React.createElement("div",null,label&&React.createElement("label",{style:css.lbl},label),React.createElement("textarea",{value,onChange,placeholder,rows,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
+  return React.createElement("div",null,label&&React.createElement("label",{style:css.lbl},label),React.createElement("input",{type,min,value,onChange,placeholder,style:s,onFocus:()=>setF(true),onBlur:()=>setF(false)}));
 }
 function Sel({label,value,onChange,children}) {
-  const [f,setF] = useState(false);
-  return React.createElement("div",null, label&&React.createElement("label",{style:css.lbl},label), React.createElement("select",{value,onChange,onFocus:()=>setF(true),onBlur:()=>setF(false),style:{...css.inp,appearance:"none",cursor:"pointer",borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},children));
+  const [f,setF]=useState(false);
+  return React.createElement("div",null,label&&React.createElement("label",{style:css.lbl},label),React.createElement("select",{value,onChange,onFocus:()=>setF(true),onBlur:()=>setF(false),style:{...css.inp,appearance:"none",cursor:"pointer",borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},children));
 }
 function PBtn({onClick,children,disabled,style={}}) {
-  const [h,setH] = useState(false);
+  const [h,setH]=useState(false);
   return React.createElement("button",{onClick,disabled,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{background:h&&!disabled?"#FFB340":"#FF9500",border:"none",borderRadius:10,padding:"11px 22px",fontSize:14,fontWeight:700,color:"#000",cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,transition:"all .15s",...style}},children);
 }
 function GBtn({onClick,children,style={}}) {
-  const [h,setH] = useState(false);
+  const [h,setH]=useState(false);
   return React.createElement("button",{onClick,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{background:"transparent",border:"1px solid "+(h?"#444":"#222"),borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:500,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",...style}},children);
 }
 function Pill({label,value,onRemove}) {
   return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:4,background:"#111",border:"1px solid #222",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#888"}},
-    value ? React.createElement(React.Fragment,null, React.createElement("span",{style:{color:"#FF9500",fontWeight:600}},label+": "), value) : label,
-    onRemove && React.createElement("button",{onClick:onRemove,style:{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"},onMouseEnter:e=>e.currentTarget.style.color="#FF3B30",onMouseLeave:e=>e.currentTarget.style.color="#444"},"×")
+    value?React.createElement(React.Fragment,null,React.createElement("span",{style:{color:"#FF9500",fontWeight:600}},label+": "),value):label,
+    onRemove&&React.createElement("button",{onClick:onRemove,style:{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"},onMouseEnter:e=>e.currentTarget.style.color="#FF3B30",onMouseLeave:e=>e.currentTarget.style.color="#444"},"×")
   );
 }
 function SBadge({status}) {
-  const s = STATUS[status]||STATUS.draft;
+  const s=STATUS[status]||STATUS.draft;
   return React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.color+"30",textTransform:"capitalize"}},s.label);
 }
 function Dots() {
@@ -277,121 +374,118 @@ function Dots() {
 }
 function FCard({icon,title,children}) {
   return React.createElement("div",{style:{...css.card,padding:24,marginBottom:14}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:18}}, React.createElement("span",{style:{fontSize:14}},icon), React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},title)),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:18}},React.createElement("span",{style:{fontSize:14}},icon),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},title)),
     children
   );
 }
 function Row({cols=2,gap=12,mb=14,children}) {
   return React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat("+cols+",1fr)",gap,marginBottom:mb}},children);
 }
-function Collapsible({icon,title,badge,children,defaultOpen=true}) {
-  const [open,setOpen] = useState(defaultOpen);
-  return React.createElement("div",{style:{...css.card,overflow:"hidden",marginBottom:14}},
+function Collapsible({icon,title,badge,children,defaultOpen=true,accentColor}) {
+  const [open,setOpen]=useState(defaultOpen);
+  return React.createElement("div",{style:{...css.card,overflow:"hidden",marginBottom:14,borderColor:open&&accentColor?accentColor+"33":"#222"}},
     React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-        React.createElement("span",{style:{fontSize:14}},icon),
-        React.createElement("span",{style:{fontSize:13,fontWeight:600}},title),
-        badge && React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)
+        React.createElement("span",{style:{fontSize:16}},icon),
+        React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},title),
+        badge&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)
       ),
       React.createElement("span",{style:{fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
     ),
-    open && React.createElement(React.Fragment,null,
+    open&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
       React.createElement("div",{style:{padding:20}},children)
     )
   );
 }
 function Toast({toast}) {
-  if (!toast) return null;
+  if(!toast) return null;
   return React.createElement("div",{style:{position:"fixed",top:16,right:16,zIndex:999,background:"#111",border:"1px solid "+(toast.type==="warn"?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.4)"),borderRadius:12,padding:"12px 18px",fontSize:13,color:"#fff",boxShadow:"0 8px 32px rgba(0,0,0,0.8)",fontWeight:500}},toast.msg);
 }
 function Header({back,backLabel,title,right}) {
-  const [h,setH] = useState(false);
+  const [h,setH]=useState(false);
   return React.createElement("div",{style:{position:"sticky",top:0,zIndex:20,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #1a1a1a",padding:"0 28px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between"}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,minWidth:0}},
-      back ? React.createElement("button",{onClick:back,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"1px solid "+(h?"#333":"#1a1a1a"),borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s"}},"← "+backLabel)
-      : React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexShrink:0}},
-          React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}},"●"),
-          React.createElement("span",{style:{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}},"ResearchLens")
-        ),
-      title && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+      back?React.createElement("button",{onClick:back,onMouseEnter:()=>setH(true),onMouseLeave:()=>setH(false),style:{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"1px solid "+(h?"#333":"#1a1a1a"),borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s"}},"← "+backLabel)
+      :React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexShrink:0}},
+        React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}},"●"),
+        React.createElement("span",{style:{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}},"ResearchLens")
+      ),
+      title&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
         React.createElement("span",{style:{width:3,height:3,borderRadius:"50%",background:"#333"}}),
         React.createElement("span",{style:{fontSize:13,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},title)
       )
     ),
-    right && React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},right)
+    right&&React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},right)
   );
 }
 
-// ── COUNTRY / CITY DROPDOWNS ──────────────────────────────────────────────────
 function CountryDD({value,onChange}) {
-  const [open,setOpen] = useState(false); const [search,setSearch] = useState(""); const ref = useRef(null);
-  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
-  const filtered = ALL_COUNTRIES.filter(c=>c.toLowerCase().includes(search.toLowerCase()));
+  const [open,setOpen]=useState(false); const [search,setSearch]=useState(""); const ref=useRef(null);
+  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+  const filtered=ALL_COUNTRIES.filter(c=>c.toLowerCase().includes(search.toLowerCase()));
   return React.createElement("div",{ref,style:{position:"relative"}},
     React.createElement("label",{style:css.lbl},"Country *"),
     React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.inp,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}},
       React.createElement("span",{style:{color:value?"#fff":"#444"}},value||"Select country…"),
       React.createElement("span",{style:{fontSize:10,color:"#444"}},"▼")
     ),
-    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:280}},
+    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:280}},
       React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},
         React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search country…",style:{...css.inp,padding:"7px 10px",fontSize:12}})
       ),
       React.createElement("div",{style:{overflowY:"auto",flex:1}},
         filtered.map(c=>React.createElement("button",{key:c,onClick:()=>{onChange(c);setSearch("");setOpen(false);},style:{width:"100%",padding:"9px 14px",background:c===value?"rgba(255,149,0,0.08)":"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:c===value?"#FF9500":"#fff",fontWeight:c===value?700:400},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background=c===value?"rgba(255,149,0,0.08)":"transparent"},c)),
-        filtered.length===0 && React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},"No results")
+        filtered.length===0&&React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},"No results")
       )
     )
   );
 }
 function CityMS({country,value=[],onChange}) {
-  const [open,setOpen] = useState(false); const [search,setSearch] = useState(""); const ref = useRef(null);
-  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
-  const cities = COUNTRY_CITIES[country]||[];
-  const filtered = cities.filter(c=>c.toLowerCase().includes(search.toLowerCase())&&!value.includes(c));
-  const toggle = c => onChange(value.includes(c)?value.filter(x=>x!==c):[...value,c]);
-  if (!country) return React.createElement("div",null, React.createElement("label",{style:css.lbl},"Cities"), React.createElement("div",{style:{...css.inp,color:"#333",cursor:"not-allowed"}},"Select a country first…"));
+  const [open,setOpen]=useState(false); const [search,setSearch]=useState(""); const ref=useRef(null);
+  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+  const cities=COUNTRY_CITIES[country]||[];
+  const filtered=cities.filter(c=>c.toLowerCase().includes(search.toLowerCase())&&!value.includes(c));
+  const toggle=c=>onChange(value.includes(c)?value.filter(x=>x!==c):[...value,c]);
+  if(!country) return React.createElement("div",null,React.createElement("label",{style:css.lbl},"Cities"),React.createElement("div",{style:{...css.inp,color:"#333",cursor:"not-allowed"}},"Select a country first…"));
   return React.createElement("div",{ref,style:{position:"relative"}},
-    React.createElement("label",{style:css.lbl},"Cities ", React.createElement("span",{style:{color:"#444",fontWeight:400}},"(multi)")),
+    React.createElement("label",{style:css.lbl},"Cities ",React.createElement("span",{style:{color:"#444",fontWeight:400}},"(multi)")),
     React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{...css.inp,minHeight:44,height:"auto",display:"flex",flexWrap:"wrap",gap:4,alignItems:"center",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none",padding:"6px 10px"}},
-      value.length>0 ? value.map(c=>React.createElement("span",{key:c,style:{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600},onClick:e=>{e.stopPropagation();toggle(c);}},c," ",React.createElement("span",{style:{fontSize:11,cursor:"pointer",opacity:0.6}},"×")))
-      : React.createElement("span",{style:{fontSize:13,color:"#444"}},"Select cities…"),
+      value.length>0?value.map(c=>React.createElement("span",{key:c,style:{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600},onClick:e=>{e.stopPropagation();toggle(c);}},c," ",React.createElement("span",{style:{fontSize:11,cursor:"pointer",opacity:0.6}},"×")))
+      :React.createElement("span",{style:{fontSize:13,color:"#444"}},"Select cities…"),
       React.createElement("span",{style:{marginLeft:"auto",fontSize:10,color:"#444",flexShrink:0}},"▼")
     ),
-    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:240}},
+    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:240}},
       React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},
         React.createElement("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search city…",style:{...css.inp,padding:"7px 10px",fontSize:12}})
       ),
       React.createElement("div",{style:{overflowY:"auto",flex:1}},
         filtered.map(c=>React.createElement("button",{key:c,onClick:()=>toggle(c),style:{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:"#fff"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,149,0,0.06)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},c)),
-        filtered.length===0 && React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},search?"No results":"All cities selected")
+        filtered.length===0&&React.createElement("div",{style:{padding:14,fontSize:12,color:"#444",textAlign:"center"}},search?"No results":"All cities selected")
       ),
-      value.length>0 && React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+      value.length>0&&React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},
         React.createElement("span",{style:{fontSize:10,color:"#444"}},value.length+" selected"),
         React.createElement("button",{onClick:()=>onChange([]),style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear")
       )
     )
   );
 }
-
-// ── TAGS DROPDOWN ─────────────────────────────────────────────────────────────
 function TagsDD({tags,setTags,tagInput,setTagInput}) {
-  const [open,setOpen] = useState(false); const ref = useRef(null);
-  useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
-  const toggle = t => setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);
-  const addCustom = () => { const v=tagInput.trim(); if(v&&!tags.includes(v))setTags(p=>[...p,v]); setTagInput(""); };
-  const filtered = TAGS_PRESET.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())&&!tags.includes(t));
-  const exactMatch = TAGS_PRESET.some(t=>t.toLowerCase()===tagInput.toLowerCase().trim());
+  const [open,setOpen]=useState(false); const ref=useRef(null);
+  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+  const toggle=t=>setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);
+  const addCustom=()=>{const v=tagInput.trim();if(v&&!tags.includes(v))setTags(p=>[...p,v]);setTagInput("");};
+  const filtered=TAGS_PRESET.filter(t=>t.toLowerCase().includes(tagInput.toLowerCase())&&!tags.includes(t));
+  const exactMatch=TAGS_PRESET.some(t=>t.toLowerCase()===tagInput.toLowerCase().trim());
   return React.createElement("div",{ref,style:{position:"relative"}},
-    tags.length>0 && React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}, tags.map(t=>React.createElement(Pill,{key:t,label:t,onRemove:()=>toggle(t)}))),
+    tags.length>0&&React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},tags.map(t=>React.createElement(Pill,{key:t,label:t,onRemove:()=>toggle(t)}))),
     React.createElement("div",{style:{position:"relative"},onClick:()=>setOpen(true)},
       React.createElement("input",{value:tagInput,onChange:e=>{setTagInput(e.target.value);setOpen(true);},onFocus:()=>setOpen(true),onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();if(tagInput.trim()&&!exactMatch)addCustom();else if(filtered.length>0)toggle(filtered[0]);}if(e.key==="Escape")setOpen(false);},placeholder:tags.length>0?"Add more…":"Search or select industries…",style:{...css.inp,paddingRight:36,borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}}),
       React.createElement("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:10,color:"#444",pointerEvents:"none"}},"▼")
     ),
-    open && React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:50,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",maxHeight:260,display:"flex",flexDirection:"column"}},
+    open&&React.createElement("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:50,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",maxHeight:260,display:"flex",flexDirection:"column"}},
       React.createElement("div",{style:{overflowY:"auto",flex:1}},
-        tagInput.trim()&&!exactMatch && React.createElement("button",{onClick:()=>{addCustom();setOpen(false);},style:{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},
+        tagInput.trim()&&!exactMatch&&React.createElement("button",{onClick:()=>{addCustom();setOpen(false);},style:{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}},
           React.createElement("span",{style:{fontSize:11,color:"#FF9500",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:6,padding:"2px 7px",fontWeight:700,flexShrink:0}},"+ Custom"),
           React.createElement("span",{style:{fontSize:12,color:"#fff"}},'"'+tagInput.trim()+'"')
         ),
@@ -401,17 +495,15 @@ function TagsDD({tags,setTags,tagInput,setTagInput}) {
           React.createElement("span",{style:{fontSize:10,color:"#FF9500",fontWeight:700}},"✓")
         ))
       ),
-      tags.length>0 && React.createElement("div",{style:{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      tags.length>0&&React.createElement("div",{style:{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("span",{style:{fontSize:10,color:"#444"}},tags.length+" selected"),
         React.createElement("button",{onClick:()=>{setTags([]);setOpen(false);},style:{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}},"Clear all")
       )
     )
   );
 }
-
-// ── MULTI CHIPS ───────────────────────────────────────────────────────────────
 function MultiChips({label,options,value=[],onChange}) {
-  const toggle = opt => onChange(value.includes(opt)?value.filter(v=>v!==opt):[...value,opt]);
+  const toggle=opt=>onChange(value.includes(opt)?value.filter(v=>v!==opt):[...value,opt]);
   return React.createElement("div",null,
     React.createElement("label",{style:css.lbl},label),
     React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
@@ -419,28 +511,26 @@ function MultiChips({label,options,value=[],onChange}) {
     )
   );
 }
-
-// ── PERSONA SECTION ───────────────────────────────────────────────────────────
 function PersonaSection({persona,onChange}) {
-  const set = (k,v) => onChange({...persona,[k]:v});
-  const [openG,setOpenG] = useState({core:true});
+  const set=(k,v)=>onChange({...persona,[k]:v});
+  const [openG,setOpenG]=useState({core:true});
   return React.createElement("div",null,
     PERSONA_GROUPS.map(group=>{
-      const isOpen = !!openG[group.key];
-      const multiActive = group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
+      const isOpen=!!openG[group.key];
+      const multiActive=group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
       return React.createElement("div",{key:group.key,style:{...css.card,overflow:"hidden",marginBottom:10}},
         React.createElement("button",{onClick:()=>setOpenG(p=>({...p,[group.key]:!p[group.key]})),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
             React.createElement("span",{style:{fontSize:14}},group.icon),
             React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},group.label),
-            group.key!=="core"&&multiActive>0 && React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}},multiActive)
+            group.key!=="core"&&multiActive>0&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}},multiActive)
           ),
           React.createElement("span",{style:{fontSize:10,color:"#444",transform:isOpen?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
         ),
-        isOpen && React.createElement(React.Fragment,null,
+        isOpen&&React.createElement(React.Fragment,null,
           React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
           React.createElement("div",{style:{padding:"16px 18px",display:"flex",flexDirection:"column",gap:16}},
-            group.key==="core" ? React.createElement(React.Fragment,null,
+            group.key==="core"?React.createElement(React.Fragment,null,
               React.createElement(Row,{cols:3,mb:12},
                 React.createElement(Inp,{label:"Age Min",type:"number",value:persona.ageMin,onChange:e=>set("ageMin",e.target.value)}),
                 React.createElement(Inp,{label:"Age Max",type:"number",value:persona.ageMax,onChange:e=>set("ageMax",e.target.value)}),
@@ -455,7 +545,7 @@ function PersonaSection({persona,onChange}) {
                 React.createElement(Sel,{label:"Family Size",value:persona.familySize,onChange:e=>set("familySize",e.target.value)},["Single","2","2–4","4+","Multi-generational"].map(o=>React.createElement("option",{key:o},o))),
                 React.createElement(Sel,{label:"Lifestyle",value:persona.lifestyle,onChange:e=>set("lifestyle",e.target.value)},["Urban","Suburban","Rural","Nomadic","Mixed"].map(o=>React.createElement("option",{key:o},o)))
               )
-            ) : React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+            ):React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
               group.fields.map(f=>React.createElement(MultiChips,{key:f.key,label:f.label,options:f.options,value:persona[f.key]||[],onChange:v=>set(f.key,v)}))
             )
           )
@@ -464,97 +554,76 @@ function PersonaSection({persona,onChange}) {
     })
   );
 }
-
-// ── PROJECT FORM ──────────────────────────────────────────────────────────────
 function ProjectForm({initial,onSave,onCancel,onDelete,isEdit}) {
-  const [name,setName] = useState(initial.name||"");
-  const [description,setDescription] = useState(initial.description||"");
-  const [tags,setTags] = useState(initial.tags||[]);
-  const [tagInput,setTagInput] = useState("");
-  const [error,setError] = useState(null);
-  const handleSave = () => { if(!name.trim()){setError("Project name is required.");return;} onSave({name,description,status:initial.status||"draft",tags,members:initial.members||[]}); };
+  const [name,setName]=useState(initial.name||"");
+  const [description,setDescription]=useState(initial.description||"");
+  const [tags,setTags]=useState(initial.tags||[]);
+  const [tagInput,setTagInput]=useState("");
+  const [error,setError]=useState(null);
+  const handleSave=()=>{if(!name.trim()){setError("Project name is required.");return;}onSave({name,description,status:initial.status||"draft",tags,members:initial.members||[]});};
   return React.createElement("div",{style:{maxWidth:560,margin:"0 auto",padding:"32px 24px"}},
     React.createElement(FCard,{icon:"📋",title:"Project Details"},
       React.createElement(Inp,{label:"Project Name *",value:name,onChange:e=>setName(e.target.value),placeholder:"e.g. MENA Retail Expansion 2025"}),
       React.createElement("div",{style:{marginTop:14}},React.createElement(Inp,{label:"Description",value:description,onChange:e=>setDescription(e.target.value),placeholder:"What is this project about?",rows:3}))
     ),
     React.createElement(FCard,{icon:"🏷",title:"Industries / Tags"},React.createElement(TagsDD,{tags,setTags,tagInput,setTagInput})),
-    error && React.createElement("div",{style:{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
+    error&&React.createElement("div",{style:{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
     React.createElement("div",{style:{display:"flex",gap:10}},
       React.createElement(GBtn,{onClick:onCancel},"Cancel"),
       React.createElement("div",{style:{flex:1}},React.createElement(PBtn,{onClick:handleSave,style:{width:"100%",padding:12}},isEdit?"Save Changes":"Create Project"))
     ),
-    isEdit && React.createElement("div",{style:{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}},
+    isEdit&&React.createElement("div",{style:{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}},
       React.createElement("button",{onClick:onDelete,style:{background:"transparent",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"8px 16px",fontSize:12,color:"#FF3B30",cursor:"pointer"},onMouseEnter:e=>e.currentTarget.style.background="rgba(255,59,48,0.08)",onMouseLeave:e=>e.currentTarget.style.background="transparent"},"🗑 Delete Project")
     )
   );
 }
-
-// ── RESEARCH FORM ─────────────────────────────────────────────────────────────
 function ResearchForm({onRun,apiKey}) {
-  const [form,setForm] = useState(emptyRForm());
-  const [loading,setLoading] = useState(false);
-  const [loadMsg,setLoadMsg] = useState("");
-  const [loadSteps,setLoadSteps] = useState([]);
-  const [error,setError] = useState(null);
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
-
-  const run = async () => {
-    if (!form.geo.country){setError("Please select a country.");return;}
-    if (!form.researchGoal){setError("Please select a research goal.");return;}
-    setError(null); setLoading(true); setLoadSteps([]);
-    const timers = [];
-    if (form.tier===1){setLoadMsg("Generating archetypes…");timers.push(setTimeout(()=>setLoadMsg("Building insights…"),2000));timers.push(setTimeout(()=>setLoadMsg("Finalising report…"),4000));}
-    else if (form.tier===2){setLoadMsg("Searching live web data…");timers.push(setTimeout(()=>setLoadMsg("Analysing signals…"),4000));timers.push(setTimeout(()=>setLoadMsg("Generating insights…"),10000));timers.push(setTimeout(()=>setLoadMsg("Building report…"),18000));}
-    else {setLoadMsg("Fetching verified APIs…");}
+  const [form,setForm]=useState(emptyRForm());
+  const [loading,setLoading]=useState(false);
+  const [loadMsg,setLoadMsg]=useState("");
+  const [loadSteps,setLoadSteps]=useState([]);
+  const [error,setError]=useState(null);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const run=async()=>{
+    if(!form.geo.country){setError("Please select a country.");return;}
+    if(!form.researchGoal){setError("Please select a research goal.");return;}
+    setError(null);setLoading(true);setLoadSteps([]);
+    const timers=[];
+    if(form.tier===1){setLoadMsg("Generating archetypes…");timers.push(setTimeout(()=>setLoadMsg("Building insights…"),2000));timers.push(setTimeout(()=>setLoadMsg("Finalising report…"),4000));}
+    else if(form.tier===2){setLoadMsg("Searching live web data…");timers.push(setTimeout(()=>setLoadMsg("Analysing signals…"),4000));timers.push(setTimeout(()=>setLoadMsg("Generating insights…"),10000));timers.push(setTimeout(()=>setLoadMsg("Building report…"),18000));}
+    else{setLoadMsg("Fetching verified APIs…");}
     try {
-      let verifiedData = null;
-      if (form.tier===3) {
-        verifiedData = await fetchVerifiedData(form,(msg)=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg}]);});
-        setLoadSteps(p=>[...p,{msg:"✓ Verified data collected"}]);
-        setLoadMsg("Running AI synthesis…");
-      }
-      const {prompt,useWebSearch} = buildPrompt(form, verifiedData);
-      const body = {model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
-      if (useWebSearch) body.tools = [{"type":"web_search_20250305","name":"web_search"}];
-      // Send apiKey inside body so the Netlify proxy can forward it server-side
-body.apiKey = apiKey;
-const res = await fetch("https://rl-proxy.asif-a-aliyev.workers.dev", {
-  method: "POST",
-  headers: {"Content-Type": "application/json"},
-  body: JSON.stringify(body)
-});
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message||"API error");
-      const raw = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("")||"";
-      // Extract JSON even if wrapped in markdown or has trailing text
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in response. Please try again.");
-      const parsed = JSON.parse(jsonMatch[0]);
+      let verifiedData=null;
+      if(form.tier===3){verifiedData=await fetchVerifiedData(form,(msg)=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg}]);});setLoadSteps(p=>[...p,{msg:"✓ Verified data collected"}]);setLoadMsg("Running AI synthesis…");}
+      const {prompt,useWebSearch}=buildPrompt(form,verifiedData);
+      const body={model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
+      if(useWebSearch)body.tools=[{"type":"web_search_20250305","name":"web_search"}];
+      body.apiKey=apiKey;
+      const res=await fetch("https://rl-proxy.asif-a-aliyev.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message||"API error");
+      const raw=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("")||"";
+      const jsonMatch=raw.match(/\{[\s\S]*\}/);
+      if(!jsonMatch)throw new Error("No JSON found in response. Please try again.");
+      const parsed=JSON.parse(jsonMatch[0]);
       timers.forEach(clearTimeout);
       onRun({id:uid(),name:form.name||"Run — "+nowStr(),createdAt:nowStr(),geo:{...form.geo},researchGoal:form.researchGoal,numberOfPeople:form.numberOfPeople,language:form.language,tier:form.tier,persona:{...form.persona},verifiedData,results:parsed});
-    } catch(e) {
-      timers.forEach(clearTimeout);
-      setError("Generation failed: "+e.message);
-      setLoading(false);
-    }
+    } catch(e){timers.forEach(clearTimeout);setError("Generation failed: "+e.message);setLoading(false);}
   };
-
-  const tierCfg = TIERS[form.tier];
+  const tierCfg=TIERS[form.tier];
   return React.createElement("div",{style:{maxWidth:660,margin:"0 auto",padding:"32px 24px"}},
-    // Tier selector
     React.createElement("div",{style:{...css.card,padding:20,marginBottom:14}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},React.createElement("span",{style:{fontSize:14}},"⚡"),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},"Research Tier")),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},
         Object.values(TIERS).map(t=>{
-          const active = form.tier===t.id;
+          const active=form.tier===t.id;
           return React.createElement("button",{key:t.id,onClick:()=>set("tier",t.id),style:{background:active?"#1a1a1a":"transparent",border:"1.5px solid "+(active?t.badgeColor:"#222"),borderRadius:12,padding:"14px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s"}},
             React.createElement("div",{style:{fontSize:18,marginBottom:6}},t.icon),
             React.createElement("div",{style:{fontSize:11,fontWeight:700,color:active?t.badgeColor:"#fff",marginBottom:4}},"Tier "+t.id),
             React.createElement("div",{style:{fontSize:11,fontWeight:600,color:active?t.badgeColor:"#888",marginBottom:6,lineHeight:1.3}},t.label),
             React.createElement("div",{style:{fontSize:10,color:"#444",lineHeight:1.4,marginBottom:4}},t.desc),
             React.createElement("div",{style:{fontSize:10,color:active?t.badgeColor:"#444",fontWeight:600}},t.time),
-            t.providers.length>0 && React.createElement("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",gap:3}},t.providers.map(p=>React.createElement("span",{key:p,style:{fontSize:9,background:"rgba(52,199,89,0.1)",color:"#34C759",border:"1px solid rgba(52,199,89,0.2)",borderRadius:6,padding:"1px 5px"}},p)))
+            t.providers.length>0&&React.createElement("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",gap:3}},t.providers.map(p=>React.createElement("span",{key:p,style:{fontSize:9,background:"rgba(52,199,89,0.1)",color:"#34C759",border:"1px solid rgba(52,199,89,0.2)",borderRadius:6,padding:"1px 5px"}},p)))
           );
         })
       )
@@ -582,64 +651,235 @@ const res = await fetch("https://rl-proxy.asif-a-aliyev.workers.dev", {
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"0 2px"}},React.createElement("span",{style:{fontSize:14}},"👤"),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#fff"}},"Target Persona")),
       React.createElement(PersonaSection,{persona:form.persona,onChange:p=>setForm(f=>({...f,persona:p}))})
     ),
-    error && React.createElement("div",{style:{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
-    loading&&form.tier===3&&loadSteps.length>0 && React.createElement("div",{style:{...css.card,padding:16,marginBottom:16}},loadSteps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#34C759",marginBottom:4}},React.createElement("span",null,"✓"),React.createElement("span",null,s.msg)))),
+    error&&React.createElement("div",{style:{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}},error),
+    loading&&form.tier===3&&loadSteps.length>0&&React.createElement("div",{style:{...css.card,padding:16,marginBottom:16}},loadSteps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#34C759",marginBottom:4}},React.createElement("span",null,"✓"),React.createElement("span",null,s.msg)))),
     React.createElement("button",{onClick:run,disabled:loading,style:{width:"100%",background:loading?"#111":"#FF9500",border:loading?"1px solid #222":"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:loading?"#666":"#000",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s",letterSpacing:"-0.3px"}},
-      loading ? React.createElement(React.Fragment,null,loadMsg,React.createElement(Dots)) : tierCfg.icon+" Run Tier "+form.tier+" Research"
+      loading?React.createElement(React.Fragment,null,loadMsg,React.createElement(Dots)):tierCfg.icon+" Run Tier "+form.tier+" Research"
     ),
     React.createElement("div",{style:{textAlign:"center",marginTop:8,fontSize:11,color:"#444"}},tierCfg.desc+" · "+tierCfg.time)
   );
 }
 
-// ── RESULT COMPONENTS ─────────────────────────────────────────────────────────
+// ── BEAUTIFUL RESULT COMPONENTS ───────────────────────────────────────────────
 function TierBadge({tier}) {
-  const t = TIERS[tier||2];
+  const t=TIERS[tier||2];
   return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},t.icon+" "+t.badge);
 }
 function ProviderBadges({providers=[]}) {
-  if (!providers.length) return null;
+  if(!providers.length)return null;
   return React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}},
     React.createElement("span",{style:{fontSize:10,color:"#444",alignSelf:"center",marginRight:4}},"Data:"),
     providers.map(p=>{const s=PROVIDER_STYLES[p]||{color:"#888",bg:"rgba(136,136,136,0.1)",border:"rgba(136,136,136,0.2)",icon:"📊"};return React.createElement("span",{key:p,style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.border}},s.icon+" "+p);})
   );
 }
 function VerifiedStats({stats=[],worldBankRaw}) {
-  const displayStats = stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v&&v.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
-  if (!displayStats.length) return null;
+  const displayStats=stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v&&v.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
+  if(!displayStats.length)return null;
   return React.createElement("div",{style:{background:"rgba(52,199,89,0.06)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:14,padding:20,marginBottom:16}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:14}},React.createElement("span",null,"✅"),React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#34C759"}},"Verified Data Points"),React.createElement("span",{style:{fontSize:10,color:"#444",background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:8,padding:"1px 7px"}},displayStats.length)),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}},
       displayStats.map((s,i)=>React.createElement("div",{key:i,style:{background:"#111",border:"1px solid rgba(52,199,89,0.12)",borderRadius:10,padding:"10px 12px"}},
         React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:3,display:"flex",justifyContent:"space-between"}},React.createElement("span",null,s.source),React.createElement("span",null,s.year)),
-        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#34C759",marginBottom:2}},s.value),
+        React.createElement("div",{className:"stat-shine",style:{fontSize:14,fontWeight:700,marginBottom:2}},s.value),
         React.createElement("div",{style:{fontSize:10,color:"#888",lineHeight:1.3}},s.label)
       ))
     )
   );
 }
 function SourcesStrip({sources=[]}) {
-  if (!sources.length) return null;
+  if(!sources.length)return null;
   return React.createElement("div",{style:{...css.card,padding:"12px 16px",marginBottom:16}},
     React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:8}},"Sources"),
     React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},sources.map((s,i)=>React.createElement("span",{key:i,style:{fontSize:10,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:8,padding:"3px 9px",color:"#666"}},s)))
   );
 }
 
+// ── ARCHETYPE CARD (beautiful with 3D illustration) ───────────────────────────
+function ArchetypeCard({archetype, index}) {
+  const [hovered, setHovered] = useState(false);
+  const c = ARCH_COLORS[index % 8];
+  const [c1,c2] = ARCH_GRADIENTS[index % 8];
+  const illFn = ARCH_ILLUSTRATIONS[index % 8];
+  const illSVG = illFn(c1, c2);
+  const pct = archetype.sharePercent || 0;
+  const desc = stripCites(archetype.description || "");
+
+  return React.createElement("div",{
+    onMouseEnter:()=>setHovered(true),
+    onMouseLeave:()=>setHovered(false),
+    style:{
+      background: hovered ? "#161616" : "#0d0d0d",
+      border: "1px solid " + (hovered ? c+"55" : "#1e1e1e"),
+      borderRadius: 20,
+      padding: 0,
+      marginBottom: 16,
+      overflow: "hidden",
+      transition: "all .25s",
+      boxShadow: hovered ? "0 8px 40px "+c+"20" : "none",
+      animation: "fadeInUp .4s ease both",
+      animationDelay: (index * 0.08) + "s"
+    }},
+    // Top colored band
+    React.createElement("div",{style:{
+      height: 3,
+      background: "linear-gradient(90deg, "+c1+", "+c2+")",
+      borderRadius: "20px 20px 0 0"
+    }}),
+    React.createElement("div",{style:{padding: "20px 22px"}},
+      // Header row
+      React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16}},
+        // 3D illustration
+        React.createElement("div",{style:{
+          width: 80, height: 80, flexShrink: 0,
+          background: "radial-gradient(circle at 30% 30%, "+c+"22, "+c+"06)",
+          borderRadius: 18,
+          border: "1px solid "+c+"25",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          overflow: "hidden",
+          animation: hovered ? "float 3s ease-in-out infinite" : "none"
+        }},
+          React.createElement("div",{
+            dangerouslySetInnerHTML:{__html:illSVG},
+            style:{width:68,height:68}
+          })
+        ),
+        // Name + share + bar
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              React.createElement("div",{style:{
+                width:22,height:22,borderRadius:"50%",
+                background:"linear-gradient(135deg,"+c1+","+c2+")",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:10,fontWeight:900,color:"#000",flexShrink:0
+              }},index+1),
+              React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},archetype.name)
+            ),
+            React.createElement("span",{style:{
+              fontSize:18,fontWeight:900,color:c,
+              background:"linear-gradient(135deg,"+c1+","+c2+")",
+              WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"
+            }},pct+"%")
+          ),
+          // Progress bar
+          React.createElement("div",{style:{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:4}},
+            React.createElement("div",{style:{
+              height:6,
+              background:"linear-gradient(90deg,"+c1+","+c2+")",
+              borderRadius:3,
+              width:pct+"%",
+              transition:"width 1s ease",
+              boxShadow:"0 0 8px "+c+"60"
+            }})
+          ),
+          React.createElement("div",{style:{fontSize:10,color:"#444"}},pct+"% of target market")
+        )
+      ),
+      // Description
+      React.createElement("p",{style:{
+        fontSize:13,color:"#999",lineHeight:1.8,marginBottom:14,
+        borderLeft:"2px solid "+c+"40",paddingLeft:12
+      }},desc),
+      // Traits
+      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+        (archetype.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{
+          fontSize:11,
+          background:"linear-gradient(135deg,"+c1+"18,"+c2+"10)",
+          border:"1px solid "+c+"35",
+          borderRadius:20,padding:"4px 12px",
+          color:c,fontWeight:600,
+          backdropFilter:"blur(4px)"
+        }},t))
+      )
+    )
+  );
+}
+
+// ── PROSE SECTION (beautiful readable cards) ──────────────────────────────────
+function ProseSection({icon, title, text, accentColor, gradientFrom, gradientTo}) {
+  const paragraphs = parseProse(text);
+  const [open, setOpen] = useState(true);
+  const ac = accentColor || "#FF9500";
+  const gf = gradientFrom || "#FF9500";
+  const gt = gradientTo || "#FF6B00";
+
+  return React.createElement("div",{style:{
+    background:"#0d0d0d",
+    border:"1px solid #1e1e1e",
+    borderRadius:20,
+    overflow:"hidden",
+    marginBottom:16
+  }},
+    // Header
+    React.createElement("button",{
+      onClick:()=>setOpen(o=>!o),
+      style:{
+        width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"
+      }},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("div",{style:{
+          width:34,height:34,borderRadius:10,
+          background:"linear-gradient(135deg,"+gf+"25,"+gt+"15)",
+          border:"1px solid "+ac+"30",
+          display:"flex",alignItems:"center",justifyContent:"center",fontSize:16
+        }},icon),
+        React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},title),
+        paragraphs.length>0&&React.createElement("span",{style:{
+          fontSize:9,fontWeight:700,
+          background:ac+"20",color:ac,
+          border:"1px solid "+ac+"30",
+          borderRadius:20,padding:"2px 8px"
+        }},paragraphs.length+" sections")
+      ),
+      React.createElement("div",{style:{
+        width:28,height:28,borderRadius:"50%",
+        background:"#1a1a1a",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:10,color:"#444",
+        transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"
+      }},"▼")
+    ),
+    // Gradient line
+    open&&React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,"+gf+"40,"+gt+"20,transparent)"}}),
+    // Content
+    open&&React.createElement("div",{style:{padding:"22px 24px"}},
+      paragraphs.length===0
+        ? React.createElement("p",{style:{fontSize:13,color:"#555",fontStyle:"italic"}},"No content available.")
+        : paragraphs.map((para,i)=>
+            React.createElement("div",{key:i,style:{
+              display:"flex",gap:14,marginBottom: i<paragraphs.length-1?20:0,
+              animation:"fadeInUp .3s ease both",
+              animationDelay:(i*0.05)+"s"
+            }},
+              // Left accent line with dot
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:4}},
+                React.createElement("div",{style:{
+                  width:8,height:8,borderRadius:"50%",
+                  background:"linear-gradient(135deg,"+gf+","+gt+")",
+                  boxShadow:"0 0 6px "+ac+"60",flexShrink:0
+                }}),
+                i<paragraphs.length-1&&React.createElement("div",{style:{
+                  width:1,flex:1,
+                  background:"linear-gradient(180deg,"+ac+"30,transparent)",
+                  marginTop:4
+                }})
+              ),
+              React.createElement("p",{style:{
+                fontSize:13.5,color:"#b0b0b0",lineHeight:1.9,
+                margin:0,fontWeight:400,
+                letterSpacing:"0.01em"
+              }},para)
+            )
+          )
+    )
+  );
+}
+
 // ── API KEY GATE ──────────────────────────────────────────────────────────────
 function ApiKeyGate({onUnlock}) {
-  const [key,setKey] = useState("");
-  const [show,setShow] = useState(false);
-  const [error,setError] = useState("");
-
-  const handleUnlock = () => {
-    const k = key.trim();
-    if (!k.startsWith("sk-ant-")) { setError("Key must start with sk-ant-..."); return; }
-    if (k.length < 40) { setError("Key looks too short. Please paste the full key."); return; }
-    setError("");
-    localStorage.setItem("rl_apikey", k);
-    onUnlock(k);
-  };
-
+  const [key,setKey]=useState(""); const [show,setShow]=useState(false); const [error,setError]=useState("");
+  const handleUnlock=()=>{const k=key.trim();if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}if(k.length<40){setError("Key looks too short. Please paste the full key.");return;}setError("");localStorage.setItem("rl_apikey",k);onUnlock(k);};
   return React.createElement("div",{style:{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
     React.createElement("div",{style:{width:"100%",maxWidth:420,textAlign:"center"}},
       React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:24,margin:"0 auto 24px"}},"●"),
@@ -651,9 +891,10 @@ function ApiKeyGate({onUnlock}) {
           React.createElement("input",{type:show?"text":"password",value:key,onChange:e=>setKey(e.target.value),onKeyDown:e=>e.key==="Enter"&&handleUnlock(),placeholder:"sk-ant-api03-...",style:{width:"100%",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,padding:"11px 44px 11px 14px",fontSize:13,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:"monospace",letterSpacing:"0.5px"}}),
           React.createElement("button",{onClick:()=>setShow(s=>!s),style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#444",lineHeight:1}},show?"🙈":"👁")
         ),
-        error && React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
+        error&&React.createElement("div",{style:{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}},error)
       ),
-      React.createElement("button",{onClick:handleUnlock,disabled:!key.trim(),style:{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},"Unlock ResearchLens →"),      React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
+      React.createElement("button",{onClick:handleUnlock,disabled:!key.trim(),style:{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,transition:"all .2s"}},"Unlock ResearchLens →"),
+      React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}},
         React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}},"How to get your API key"),
         [["1","Go to console.anthropic.com"],["2","Sign in or create a free account"],["3","Navigate to API Keys → Create Key"],["4","Copy and paste it above"]].map(([n,t])=>React.createElement("div",{key:n,style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
           React.createElement("div",{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#FF9500",flexShrink:0}},n),
@@ -667,33 +908,29 @@ function ApiKeyGate({onUnlock}) {
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 function App() {
-  const [view,setView] = useState("projects");
-  const [apiKey,setApiKey] = useState(()=>localStorage.getItem("rl_apikey")||"");
-  const [projects,setProjects] = useState([]);
-  const [ready,setReady] = useState(false);
-  const [activeProj,setActiveProj] = useState(null);
-  const [activeRun,setActiveRun] = useState(null);
-  const [editingProj,setEditingProj] = useState(null);
-  const [toast,setToast] = useState(null);
+  const [view,setView]=useState("projects");
+  const [apiKey,setApiKey]=useState(()=>localStorage.getItem("rl_apikey")||"");
+  const [projects,setProjects]=useState([]);
+  const [ready,setReady]=useState(false);
+  const [activeProj,setActiveProj]=useState(null);
+  const [activeRun,setActiveRun]=useState(null);
+  const [editingProj,setEditingProj]=useState(null);
+  const [toast,setToast]=useState(null);
+  const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
+  useEffect(()=>{sbLoad().then(p=>{setProjects(p);setReady(true);});},[]);
+  const persist=async(list)=>{setProjects(list);await sbSave(list);};
+  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);setActiveProj(proj);showToast("Project created ✓");setView("project");};
+  const handleUpdate=async data=>{const list=projects.map(p=>p.id===activeProj.id?{...p,...data}:p);await persist(list);setActiveProj(list.find(p=>p.id===activeProj.id));showToast("Saved ✓");setView("project");};
+  const handleDelete=async()=>{await sbDelete(activeProj.id);const list=projects.filter(p=>p.id!==activeProj.id);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");setView("projects");};
+  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===activeProj.id?updProj:p);await persist(list);setActiveProj(updProj);setActiveRun(run);showToast("Report ready ✓");setView("research");};
 
-  const showToast = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
-
-  useEffect(()=>{ sbLoad().then(p=>{setProjects(p);setReady(true);}); },[]);
-
-  const persist = async (list) => { setProjects(list); await sbSave(list); };
-  const handleCreate = async data => { const proj={id:uid(),...data,createdAt:nowStr(),runs:[]}; const list=[proj,...projects]; await persist(list); setActiveProj(proj); showToast("Project created ✓"); setView("project"); };
-  const handleUpdate = async data => { const list=projects.map(p=>p.id===activeProj.id?{...p,...data}:p); await persist(list); setActiveProj(list.find(p=>p.id===activeProj.id)); showToast("Saved ✓"); setView("project"); };
-  const handleDelete = async () => { await sbDelete(activeProj.id); const list=projects.filter(p=>p.id!==activeProj.id); setProjects(list); try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){} showToast("Deleted","warn"); setView("projects"); };
-  const handleRunComplete = async run => { const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]}; const list=projects.map(p=>p.id===activeProj.id?updProj:p); await persist(list); setActiveProj(updProj); setActiveRun(run); showToast("Report ready ✓"); setView("research"); };
-
-  if (!apiKey) return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
-  if (!ready) return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
+  if(!apiKey)return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
+  if(!ready)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
     React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:20}},"●"),
     React.createElement(Dots)
   );
 
-  // PROJECTS LIST
-  if (view==="projects") return React.createElement("div",{style:css.page},
+  if(view==="projects") return React.createElement("div",{style:css.page},
     React.createElement(Toast,{toast}),
     React.createElement(Header,{right:React.createElement(React.Fragment,null,
       React.createElement(GBtn,{onClick:()=>{localStorage.removeItem("rl_apikey");setApiKey("");},style:{padding:"6px 12px",fontSize:11}},"🔑 Change Key"),
@@ -728,12 +965,12 @@ function App() {
         React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",marginBottom:2}},"Create New Project"),React.createElement("div",{style:{fontSize:12,color:"#444"}},"Configure geography, persona depth, and research tier")),
         React.createElement("span",{style:{fontSize:18,color:"#333"}},"→")
       ),
-      projects.length===0 ? React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
+      projects.length===0?React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
         React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🗂"),
         React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No projects yet"),
         React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Create your first project to get started"),
         React.createElement(PBtn,{onClick:()=>setView("newProject")},"Create Project")
-      ) : React.createElement(React.Fragment,null,
+      ):React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:16}},
           React.createElement("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}},"Your Projects"),
           React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},projects.length)
@@ -744,7 +981,7 @@ function App() {
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement("span",{style:{fontSize:15,fontWeight:700,color:"#fff"}},p.name),React.createElement(SBadge,{status:p.status})),
               React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}},p.createdAt)
             ),
-            p.description && React.createElement("p",{style:{fontSize:12,color:"#666",marginBottom:10,lineHeight:1.5}},p.description),
+            p.description&&React.createElement("p",{style:{fontSize:12,color:"#666",marginBottom:10,lineHeight:1.5}},p.description),
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
               React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},(p.tags||[]).map(t=>React.createElement(Pill,{key:t,label:t}))),
               React.createElement("span",{style:{fontSize:11,color:"#444",flexShrink:0}},"🔬 "+(p.runs||[]).length+" run"+((p.runs||[]).length!==1?"s":""))
@@ -755,12 +992,11 @@ function App() {
     )
   );
 
-  if (view==="newProject") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>setView("projects")}));
-  if (view==="editProject") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:editingProj||activeProj,isEdit:true,onSave:handleUpdate,onCancel:()=>setView("project"),onDelete:handleDelete}));
+  if(view==="newProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:"New Project"}),React.createElement(ProjectForm,{initial:{name:"",description:"",status:"draft",tags:[],members:[]},isEdit:false,onSave:handleCreate,onCancel:()=>setView("projects")}));
+  if(view==="editProject")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"Edit Project"}),React.createElement(ProjectForm,{initial:editingProj||activeProj,isEdit:true,onSave:handleUpdate,onCancel:()=>setView("project"),onDelete:handleDelete}));
 
-  // PROJECT DETAIL
-  if (view==="project") {
-    const proj = projects.find(p=>p.id===activeProj?.id)||activeProj;
+  if(view==="project"){
+    const proj=projects.find(p=>p.id===activeProj?.id)||activeProj;
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
       React.createElement(Header,{back:()=>setView("projects"),backLabel:"Projects",title:proj.name,right:React.createElement(React.Fragment,null,
@@ -769,9 +1005,9 @@ function App() {
       )}),
       React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"32px 24px"}},
         React.createElement("div",{style:{marginBottom:28}},
-          React.createElement("h2",{style:{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1}},proj.name,React.createElement("span",{style:{color:"#FF9500"}}, ".")),
+          React.createElement("h2",{style:{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1}},proj.name,React.createElement("span",{style:{color:"#FF9500"}},".") ),
           React.createElement("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:12}},React.createElement(SBadge,{status:proj.status}),(proj.tags||[]).map(t=>React.createElement(Pill,{key:t,label:t}))),
-          proj.description && React.createElement("p",{style:{fontSize:13,color:"#666",lineHeight:1.7,margin:0}},proj.description)
+          proj.description&&React.createElement("p",{style:{fontSize:13,color:"#666",lineHeight:1.7,margin:0}},proj.description)
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
@@ -779,14 +1015,14 @@ function App() {
             React.createElement("span",{style:{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}},(proj.runs||[]).length)
           )
         ),
-        (proj.runs||[]).length===0 ? React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
+        (proj.runs||[]).length===0?React.createElement("div",{style:{...css.card,padding:64,textAlign:"center"}},
           React.createElement("div",{style:{fontSize:44,marginBottom:16}},"🔬"),
           React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}},"No runs yet"),
           React.createElement("div",{style:{fontSize:13,color:"#444",marginBottom:24}},"Run your first synthetic research to generate insights"),
           React.createElement(PBtn,{onClick:()=>setView("newResearch")},"+ New Research Run")
-        ) : React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        ):React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
           proj.runs.map(run=>{
-            const t = TIERS[run.tier||2];
+            const t=TIERS[run.tier||2];
             return React.createElement("button",{key:run.id,onClick:()=>{setActiveRun(run);setView("research");},style:{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"},onMouseEnter:e=>e.currentTarget.style.borderColor="#333",onMouseLeave:e=>e.currentTarget.style.borderColor="#222"},
               React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}},
                 React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},run.name),React.createElement("span",{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},"T"+(run.tier||2))),
@@ -794,9 +1030,9 @@ function App() {
               ),
               React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
                 React.createElement(Pill,{label:"Geo",value:run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:"")}),
-                run.researchGoal && React.createElement(Pill,{label:"Goal",value:run.researchGoal}),
+                run.researchGoal&&React.createElement(Pill,{label:"Goal",value:run.researchGoal}),
                 React.createElement(Pill,{label:"Age",value:run.persona.ageMin+"–"+run.persona.ageMax}),
-                run.results?.archetypes && React.createElement(Pill,{label:"Archetypes",value:run.results.archetypes.length})
+                run.results?.archetypes&&React.createElement(Pill,{label:"Archetypes",value:run.results.archetypes.length})
               )
             );
           })
@@ -805,55 +1041,54 @@ function App() {
     );
   }
 
-  if (view==="newResearch") return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete,apiKey}));
+  if(view==="newResearch")return React.createElement("div",{style:css.page},React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:"New Research Run"}),React.createElement(ResearchForm,{onRun:handleRunComplete,apiKey}));
 
-  // RESEARCH RESULTS
-  if (view==="research" && activeRun) {
-    const r = activeRun.results, tierCfg = TIERS[activeRun.tier||2];
+  if(view==="research"&&activeRun){
+    const r=activeRun.results, tierCfg=TIERS[activeRun.tier||2];
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
       React.createElement(Header,{back:()=>setView("project"),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
         React.createElement(GBtn,{onClick:()=>triggerPDF(activeRun,activeProj?.name)},"🖨 PDF"),
         React.createElement(PBtn,{onClick:()=>setView("newResearch"),style:{padding:"8px 18px",fontSize:13}},"+ New Run")
       )}),
-      React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"32px 24px"}},
+      React.createElement("div",{style:{maxWidth:700,margin:"0 auto",padding:"32px 24px"}},
+        // Run header
         React.createElement("div",{style:{marginBottom:24}},
-          React.createElement("h2",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1.1}},activeRun.name,React.createElement("span",{style:{color:"#FF9500"}},".")),
-          React.createElement("div",{style:{marginBottom:10}},React.createElement(TierBadge,{tier:activeRun.tier})),
-          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          React.createElement("h2",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:10,lineHeight:1.1}},activeRun.name,React.createElement("span",{style:{color:"#FF9500"}},".") ),
+          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
+            React.createElement(TierBadge,{tier:activeRun.tier}),
             React.createElement(Pill,{label:"Geo",value:activeRun.geo.country+(activeRun.geo.cities?.length?", "+activeRun.geo.cities[0]:"")}),
-            activeRun.researchGoal && React.createElement(Pill,{label:"Goal",value:activeRun.researchGoal}),
+            activeRun.researchGoal&&React.createElement(Pill,{label:"Goal",value:activeRun.researchGoal}),
             React.createElement(Pill,{label:"Age",value:activeRun.persona.ageMin+"–"+activeRun.persona.ageMax}),
             React.createElement(Pill,{label:"Income",value:activeRun.persona.incomeLevel}),
-            activeRun.numberOfPeople && React.createElement(Pill,{label:"Audience",value:Number(activeRun.numberOfPeople).toLocaleString()})
+            activeRun.numberOfPeople&&React.createElement(Pill,{label:"Audience",value:Number(activeRun.numberOfPeople).toLocaleString()})
           )
         ),
         React.createElement(ProviderBadges,{providers:r.dataProviders||[]}),
-        activeRun.tier===3 && React.createElement(VerifiedStats,{stats:r.verifiedStats||[],worldBankRaw:activeRun.verifiedData?.worldBank}),
-        activeRun.tier>=2 && React.createElement(SourcesStrip,{sources:r.searchedSources||[]}),
-        React.createElement(Collapsible,{icon:"🎭",title:"Consumer Archetypes",badge:(r.archetypes||[]).length+" detected"},
-          (r.archetypes||[]).map((a,i)=>{
-            const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;
-            return React.createElement("div",{key:i,style:{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:20,marginBottom:12,borderLeft:"3px solid "+c}},
-              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
-                React.createElement("div",{style:{width:28,height:28,background:c,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#000",flexShrink:0}},i+1),
-                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff",flex:1}},a.name),
-                React.createElement("span",{style:{fontSize:13,fontWeight:700,color:c}},pct+"%")
-              ),
-              React.createElement("div",{style:{height:3,background:"#1a1a1a",borderRadius:2,marginBottom:12}},React.createElement("div",{style:{height:3,background:c,borderRadius:2,width:pct+"%"}})),
-              React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.7,marginBottom:12}},a.description),
-              React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},(a.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{fontSize:10,background:c+"15",border:"1px solid "+c+"30",borderRadius:10,padding:"2px 10px",color:c,fontWeight:500}},t)))
-            );
-          })
+        activeRun.tier===3&&React.createElement(VerifiedStats,{stats:r.verifiedStats||[],worldBankRaw:activeRun.verifiedData?.worldBank}),
+        activeRun.tier>=2&&React.createElement(SourcesStrip,{sources:r.searchedSources||[]}),
+        // Archetypes section
+        React.createElement("div",{style:{marginBottom:16}},
+          React.createElement("div",{style:{
+            display:"flex",alignItems:"center",justifyContent:"space-between",
+            marginBottom:14,padding:"14px 18px",
+            background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:16
+          }},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+              React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"🎭"),
+              React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff"}},"Consumer Archetypes"),
+              React.createElement("span",{style:{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}},(r.archetypes||[]).length+" detected")
+            )
+          ),
+          (r.archetypes||[]).map((a,i)=>React.createElement(ArchetypeCard,{key:i,archetype:a,index:i}))
         ),
-        React.createElement(Collapsible,{icon:"🔍",title:"Insights"},React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.85}},r.insights)),
-        React.createElement(Collapsible,{icon:"🚀",title:"Opportunities"},React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.85}},r.opportunities)),
-        React.createElement(Collapsible,{icon:"💡",title:"Solutions"},React.createElement("p",{style:{fontSize:13,color:"#888",lineHeight:1.85}},r.solutions)),
+        React.createElement(ProseSection,{icon:"🔍",title:"Insights",text:r.insights,accentColor:"#007AFF",gradientFrom:"#007AFF",gradientTo:"#0055FF"}),
+        React.createElement(ProseSection,{icon:"🚀",title:"Opportunities",text:r.opportunities,accentColor:"#34C759",gradientFrom:"#34C759",gradientTo:"#30D158"}),
+        React.createElement(ProseSection,{icon:"💡",title:"Solutions",text:r.solutions,accentColor:"#FF9500",gradientFrom:"#FF9500",gradientTo:"#FF6B00"}),
         React.createElement("button",{onClick:()=>triggerPDF(activeRun,activeProj?.name),style:{width:"100%",background:"#FF9500",border:"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:"#000",cursor:"pointer",marginTop:8,letterSpacing:"-0.3px"}},"🖨 Export as PDF Presentation")
       )
     );
   }
-
   return null;
 }
 
