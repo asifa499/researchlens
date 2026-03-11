@@ -50,9 +50,7 @@ const ARCH_GRADIENTS = [
   ["#34C759","#30D158"],["#007AFF","#0055FF"],["#AF52DE","#BF5AF2"],["#FF2D55","#FF375F"]
 ];
 
-// 3D SVG illustrations for archetypes
 const ARCH_ILLUSTRATIONS = [
-  // Professional/Tech
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g0" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="28" ry="6" fill="${c1}" opacity="0.15"/>
@@ -68,7 +66,6 @@ const ARCH_ILLUSTRATIONS = [
     <circle cx="58" cy="26" r="6" fill="url(#g0)" opacity="0.8"/>
     <path d="M55 26 L57 28 L62 23" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
   </svg>`,
-  // Family/Traditional
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="70" rx="30" ry="5" fill="${c1}" opacity="0.12"/>
@@ -79,7 +76,6 @@ const ARCH_ILLUSTRATIONS = [
     <rect x="50" y="42" width="8" height="8" rx="1" fill="#fff" opacity="0.2"/>
     <circle cx="40" cy="30" r="3" fill="#fff" opacity="0.6"/>
   </svg>`,
-  // Youth/Social
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="25" ry="5" fill="${c1}" opacity="0.12"/>
@@ -92,7 +88,6 @@ const ARCH_ILLUSTRATIONS = [
     <circle cx="47" cy="36" r="3" fill="${c1}" opacity="0.6"/>
     <path d="M30 42 Q40 38 50 42" stroke="${c1}" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round"/>
   </svg>`,
-  // Executive/Premium
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
@@ -104,7 +99,6 @@ const ARCH_ILLUSTRATIONS = [
     <path d="M52 44 Q56 52 52 58" stroke="${c1}" stroke-width="2" fill="none" opacity="0.5"/>
     <path d="M36 50 L38 53 L44 47" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
   </svg>`,
-  // Rural/Agricultural  
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="28" ry="5" fill="${c1}" opacity="0.12"/>
@@ -115,7 +109,6 @@ const ARCH_ILLUSTRATIONS = [
     <circle cx="40" cy="52" r="5" fill="url(#g4)" opacity="0.9"/>
     <path d="M20 58 Q40 48 60 58" stroke="${c1}" stroke-width="1.5" fill="none" opacity="0.3" stroke-linecap="round"/>
   </svg>`,
-  // Digital/Startup
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
@@ -128,7 +121,6 @@ const ARCH_ILLUSTRATIONS = [
     <circle cx="28" cy="46" r="2" fill="${c2}" opacity="0.6"/>
     <circle cx="52" cy="46" r="2" fill="${c2}" opacity="0.6"/>
   </svg>`,
-  // Creative/Arts
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g6" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
@@ -138,7 +130,6 @@ const ARCH_ILLUSTRATIONS = [
     <circle cx="40" cy="36" r="6" fill="#fff" opacity="0.15"/>
     <circle cx="38" cy="34" r="2" fill="#fff" opacity="0.4"/>
   </svg>`,
-  // Senior/Experienced
   (c1,c2) => `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="g7" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>
     <ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/>
@@ -273,13 +264,10 @@ const COUNTRY_CITIES = {
 const ALL_COUNTRIES = Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
 const emptyRForm = () => ({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
 
-// Strip <cite ...>...</cite> tags from text
 const stripCites = (text) => {
   if (!text) return "";
   return text.replace(/<cite[^>]*>(.*?)<\/cite>/gs, '$1').replace(/<\/?cite[^>]*>/g,'');
 };
-
-// Convert prose text to paragraphs, stripping cite tags
 const parseProse = (text) => {
   if (!text) return [];
   const clean = stripCites(text);
@@ -382,23 +370,6 @@ function FCard({icon,title,children}) {
 }
 function Row({cols=2,gap=12,mb=14,children}) {
   return React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat("+cols+",1fr)",gap,marginBottom:mb}},children);
-}
-function Collapsible({icon,title,badge,children,defaultOpen=true,accentColor}) {
-  const [open,setOpen]=useState(defaultOpen);
-  return React.createElement("div",{style:{...css.card,overflow:"hidden",marginBottom:14,borderColor:open&&accentColor?accentColor+"33":"#222"}},
-    React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-        React.createElement("span",{style:{fontSize:16}},icon),
-        React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},title),
-        badge&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)
-      ),
-      React.createElement("span",{style:{fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
-    ),
-    open&&React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
-      React.createElement("div",{style:{padding:20}},children)
-    )
-  );
 }
 function Toast({toast}) {
   if(!toast) return null;
@@ -662,7 +633,6 @@ function ResearchForm({onRun,apiKey}) {
   );
 }
 
-// ── BEAUTIFUL RESULT COMPONENTS ───────────────────────────────────────────────
 function TierBadge({tier}) {
   const t=TIERS[tier||2];
   return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}},t.icon+" "+t.badge);
@@ -696,7 +666,6 @@ function SourcesStrip({sources=[]}) {
   );
 }
 
-// ── ARCHETYPE CARD (beautiful with 3D illustration) ───────────────────────────
 function ArchetypeCard({archetype, index}) {
   const [hovered, setHovered] = useState(false);
   const c = ARCH_COLORS[index % 8];
@@ -705,180 +674,70 @@ function ArchetypeCard({archetype, index}) {
   const illSVG = illFn(c1, c2);
   const pct = archetype.sharePercent || 0;
   const desc = stripCites(archetype.description || "");
-
   return React.createElement("div",{
     onMouseEnter:()=>setHovered(true),
     onMouseLeave:()=>setHovered(false),
-    style:{
-      background: hovered ? "#161616" : "#0d0d0d",
-      border: "1px solid " + (hovered ? c+"55" : "#1e1e1e"),
-      borderRadius: 20,
-      padding: 0,
-      marginBottom: 16,
-      overflow: "hidden",
-      transition: "all .25s",
-      boxShadow: hovered ? "0 8px 40px "+c+"20" : "none",
-      animation: "fadeInUp .4s ease both",
-      animationDelay: (index * 0.08) + "s"
-    }},
-    // Top colored band
-    React.createElement("div",{style:{
-      height: 3,
-      background: "linear-gradient(90deg, "+c1+", "+c2+")",
-      borderRadius: "20px 20px 0 0"
-    }}),
-    React.createElement("div",{style:{padding: "20px 22px"}},
-      // Header row
+    style:{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?c+"55":"#1e1e1e"),borderRadius:20,padding:0,marginBottom:16,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 8px 40px "+c+"20":"none",animation:"fadeInUp .4s ease both",animationDelay:(index*0.08)+"s"}},
+    React.createElement("div",{style:{height:3,background:"linear-gradient(90deg,"+c1+","+c2+")",borderRadius:"20px 20px 0 0"}}),
+    React.createElement("div",{style:{padding:"20px 22px"}},
       React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16}},
-        // 3D illustration
-        React.createElement("div",{style:{
-          width: 80, height: 80, flexShrink: 0,
-          background: "radial-gradient(circle at 30% 30%, "+c+"22, "+c+"06)",
-          borderRadius: 18,
-          border: "1px solid "+c+"25",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          overflow: "hidden",
-          animation: hovered ? "float 3s ease-in-out infinite" : "none"
-        }},
-          React.createElement("div",{
-            dangerouslySetInnerHTML:{__html:illSVG},
-            style:{width:68,height:68}
-          })
+        React.createElement("div",{style:{width:80,height:80,flexShrink:0,background:"radial-gradient(circle at 30% 30%,"+c+"22,"+c+"06)",borderRadius:18,border:"1px solid "+c+"25",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",animation:hovered?"float 3s ease-in-out infinite":"none"}},
+          React.createElement("div",{dangerouslySetInnerHTML:{__html:illSVG},style:{width:68,height:68}})
         ),
-        // Name + share + bar
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-              React.createElement("div",{style:{
-                width:22,height:22,borderRadius:"50%",
-                background:"linear-gradient(135deg,"+c1+","+c2+")",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:10,fontWeight:900,color:"#000",flexShrink:0
-              }},index+1),
+              React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,"+c1+","+c2+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#000",flexShrink:0}},index+1),
               React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},archetype.name)
             ),
-            React.createElement("span",{style:{
-              fontSize:18,fontWeight:900,color:c,
-              background:"linear-gradient(135deg,"+c1+","+c2+")",
-              WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"
-            }},pct+"%")
+            React.createElement("span",{style:{fontSize:18,fontWeight:900,background:"linear-gradient(135deg,"+c1+","+c2+")",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}},pct+"%")
           ),
-          // Progress bar
           React.createElement("div",{style:{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:4}},
-            React.createElement("div",{style:{
-              height:6,
-              background:"linear-gradient(90deg,"+c1+","+c2+")",
-              borderRadius:3,
-              width:pct+"%",
-              transition:"width 1s ease",
-              boxShadow:"0 0 8px "+c+"60"
-            }})
+            React.createElement("div",{style:{height:6,background:"linear-gradient(90deg,"+c1+","+c2+")",borderRadius:3,width:pct+"%",transition:"width 1s ease",boxShadow:"0 0 8px "+c+"60"}})
           ),
           React.createElement("div",{style:{fontSize:10,color:"#444"}},pct+"% of target market")
         )
       ),
-      // Description
-      React.createElement("p",{style:{
-        fontSize:13,color:"#999",lineHeight:1.8,marginBottom:14,
-        borderLeft:"2px solid "+c+"40",paddingLeft:12
-      }},desc),
-      // Traits
+      React.createElement("p",{style:{fontSize:13,color:"#999",lineHeight:1.8,marginBottom:14,borderLeft:"2px solid "+c+"40",paddingLeft:12}},desc),
       React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
-        (archetype.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{
-          fontSize:11,
-          background:"linear-gradient(135deg,"+c1+"18,"+c2+"10)",
-          border:"1px solid "+c+"35",
-          borderRadius:20,padding:"4px 12px",
-          color:c,fontWeight:600,
-          backdropFilter:"blur(4px)"
-        }},t))
+        (archetype.traits||[]).map((t,j)=>React.createElement("span",{key:j,style:{fontSize:11,background:"linear-gradient(135deg,"+c1+"18,"+c2+"10)",border:"1px solid "+c+"35",borderRadius:20,padding:"4px 12px",color:c,fontWeight:600,backdropFilter:"blur(4px)"}},t))
       )
     )
   );
 }
 
-// ── PROSE SECTION (beautiful readable cards) ──────────────────────────────────
 function ProseSection({icon, title, text, accentColor, gradientFrom, gradientTo}) {
   const paragraphs = parseProse(text);
   const [open, setOpen] = useState(true);
   const ac = accentColor || "#FF9500";
   const gf = gradientFrom || "#FF9500";
   const gt = gradientTo || "#FF6B00";
-
-  return React.createElement("div",{style:{
-    background:"#0d0d0d",
-    border:"1px solid #1e1e1e",
-    borderRadius:20,
-    overflow:"hidden",
-    marginBottom:16
-  }},
-    // Header
-    React.createElement("button",{
-      onClick:()=>setOpen(o=>!o),
-      style:{
-        width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"
-      }},
+  return React.createElement("div",{style:{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}},
+    React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-        React.createElement("div",{style:{
-          width:34,height:34,borderRadius:10,
-          background:"linear-gradient(135deg,"+gf+"25,"+gt+"15)",
-          border:"1px solid "+ac+"30",
-          display:"flex",alignItems:"center",justifyContent:"center",fontSize:16
-        }},icon),
+        React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,"+gf+"25,"+gt+"15)",border:"1px solid "+ac+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},icon),
         React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},title),
-        paragraphs.length>0&&React.createElement("span",{style:{
-          fontSize:9,fontWeight:700,
-          background:ac+"20",color:ac,
-          border:"1px solid "+ac+"30",
-          borderRadius:20,padding:"2px 8px"
-        }},paragraphs.length+" sections")
+        paragraphs.length>0&&React.createElement("span",{style:{fontSize:9,fontWeight:700,background:ac+"20",color:ac,border:"1px solid "+ac+"30",borderRadius:20,padding:"2px 8px"}},paragraphs.length+" sections")
       ),
-      React.createElement("div",{style:{
-        width:28,height:28,borderRadius:"50%",
-        background:"#1a1a1a",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        fontSize:10,color:"#444",
-        transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"
-      }},"▼")
+      React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
     ),
-    // Gradient line
     open&&React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,"+gf+"40,"+gt+"20,transparent)"}}),
-    // Content
     open&&React.createElement("div",{style:{padding:"22px 24px"}},
       paragraphs.length===0
         ? React.createElement("p",{style:{fontSize:13,color:"#555",fontStyle:"italic"}},"No content available.")
         : paragraphs.map((para,i)=>
-            React.createElement("div",{key:i,style:{
-              display:"flex",gap:14,marginBottom: i<paragraphs.length-1?20:0,
-              animation:"fadeInUp .3s ease both",
-              animationDelay:(i*0.05)+"s"
-            }},
-              // Left accent line with dot
+            React.createElement("div",{key:i,style:{display:"flex",gap:14,marginBottom:i<paragraphs.length-1?20:0,animation:"fadeInUp .3s ease both",animationDelay:(i*0.05)+"s"}},
               React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:4}},
-                React.createElement("div",{style:{
-                  width:8,height:8,borderRadius:"50%",
-                  background:"linear-gradient(135deg,"+gf+","+gt+")",
-                  boxShadow:"0 0 6px "+ac+"60",flexShrink:0
-                }}),
-                i<paragraphs.length-1&&React.createElement("div",{style:{
-                  width:1,flex:1,
-                  background:"linear-gradient(180deg,"+ac+"30,transparent)",
-                  marginTop:4
-                }})
+                React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"linear-gradient(135deg,"+gf+","+gt+")",boxShadow:"0 0 6px "+ac+"60",flexShrink:0}}),
+                i<paragraphs.length-1&&React.createElement("div",{style:{width:1,flex:1,background:"linear-gradient(180deg,"+ac+"30,transparent)",marginTop:4}})
               ),
-              React.createElement("p",{style:{
-                fontSize:13.5,color:"#b0b0b0",lineHeight:1.9,
-                margin:0,fontWeight:400,
-                letterSpacing:"0.01em"
-              }},para)
+              React.createElement("p",{style:{fontSize:13.5,color:"#b0b0b0",lineHeight:1.9,margin:0,fontWeight:400,letterSpacing:"0.01em"}},para)
             )
           )
     )
   );
 }
 
-// ── SOLUTIONS SECTION ─────────────────────────────────────────────────────────
 const SOLUTION_SUBSECTIONS = [
   {key:"digital",        icon:"💻", label:"Digital & Technology",    color:"#007AFF", g1:"#007AFF", g2:"#0055FF"},
   {key:"marketing",      icon:"📣", label:"Marketing & Brand",       color:"#FF2D55", g1:"#FF2D55", g2:"#FF375F"},
@@ -887,76 +746,44 @@ const SOLUTION_SUBSECTIONS = [
   {key:"distribution",   icon:"🚚", label:"Distribution & Sales",    color:"#34C759", g1:"#34C759", g2:"#30D158"},
   {key:"partnerships",   icon:"🤝", label:"Partnerships & Expansion",color:"#AF52DE", g1:"#AF52DE", g2:"#BF5AF2"},
 ];
-
 function SolutionCard({subsection, text, index}) {
   const [hovered, setHovered] = useState(false);
   const clean = stripCites(text || "");
   if (!clean) return null;
   const {icon, label, color, g1, g2} = subsection;
-  return React.createElement("div",{
-    onMouseEnter:()=>setHovered(true),
-    onMouseLeave:()=>setHovered(false),
-    style:{
-      background: hovered?"#161616":"#0d0d0d",
-      border:"1px solid "+(hovered?color+"44":"#1e1e1e"),
-      borderRadius:16, padding:0, overflow:"hidden",
-      transition:"all .25s",
-      boxShadow: hovered?"0 4px 24px "+color+"18":"none",
-      animation:"fadeInUp .35s ease both",
-      animationDelay:(index*0.07)+"s"
-    }},
+  return React.createElement("div",{onMouseEnter:()=>setHovered(true),onMouseLeave:()=>setHovered(false),style:{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?color+"44":"#1e1e1e"),borderRadius:16,padding:0,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 4px 24px "+color+"18":"none",animation:"fadeInUp .35s ease both",animationDelay:(index*0.07)+"s"}},
     React.createElement("div",{style:{height:2,background:"linear-gradient(90deg,"+g1+","+g2+")"}}),
     React.createElement("div",{style:{padding:"16px 18px"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
-        React.createElement("div",{style:{
-          width:30,height:30,borderRadius:9,
-          background:"linear-gradient(135deg,"+g1+"25,"+g2+"12)",
-          border:"1px solid "+color+"30",
-          display:"flex",alignItems:"center",justifyContent:"center",fontSize:14
-        }},icon),
+        React.createElement("div",{style:{width:30,height:30,borderRadius:9,background:"linear-gradient(135deg,"+g1+"25,"+g2+"12)",border:"1px solid "+color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},icon),
         React.createElement("span",{style:{fontSize:12,fontWeight:700,color:color,letterSpacing:"0.02em"}},label)
       ),
       React.createElement("p",{style:{fontSize:13,color:"#a0a0a0",lineHeight:1.8,margin:0}},clean)
     )
   );
 }
-
 function SolutionsSection({solutions}) {
   const [open, setOpen] = useState(true);
-  // Handle both old string format and new object format
   if (!solutions) return null;
   const isObject = typeof solutions === "object" && !Array.isArray(solutions);
-
-  return React.createElement("div",{style:{
-    background:"#0d0d0d",border:"1px solid #1e1e1e",
-    borderRadius:20,overflow:"hidden",marginBottom:16
-  }},
-    // Header
-    React.createElement("button",{
-      onClick:()=>setOpen(o=>!o),
-      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
+  return React.createElement("div",{style:{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}},
+    React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
         React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,rgba(255,149,0,0.2),rgba(255,107,0,0.1))",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"💡"),
         React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},"Solutions"),
-        isObject && React.createElement("span",{style:{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}},"6 strategies")
+        isObject&&React.createElement("span",{style:{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}},"6 strategies")
       ),
       React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
     ),
-    open && React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,rgba(255,149,0,0.4),rgba(255,107,0,0.2),transparent)"}}),
-    open && React.createElement("div",{style:{padding:"16px 18px"}},
+    open&&React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,rgba(255,149,0,0.4),rgba(255,107,0,0.2),transparent)"}}),
+    open&&React.createElement("div",{style:{padding:"16px 18px"}},
       isObject
-        ? React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
-            SOLUTION_SUBSECTIONS.map((sub,i)=>
-              React.createElement(SolutionCard,{key:sub.key,subsection:sub,text:solutions[sub.key],index:i})
-            )
-          )
-        // Fallback: old string format
+        ? React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},SOLUTION_SUBSECTIONS.map((sub,i)=>React.createElement(SolutionCard,{key:sub.key,subsection:sub,text:solutions[sub.key],index:i})))
         : React.createElement(ProseSection,{icon:"💡",title:"Solutions",text:solutions,accentColor:"#FF9500",gradientFrom:"#FF9500",gradientTo:"#FF6B00"})
     )
   );
 }
 
-// ── API KEY GATE ──────────────────────────────────────────────────────────────
 function ApiKeyGate({onUnlock}) {
   const [key,setKey]=useState(""); const [show,setShow]=useState(false); const [error,setError]=useState("");
   const handleUnlock=()=>{const k=key.trim();if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}if(k.length<40){setError("Key looks too short. Please paste the full key.");return;}setError("");localStorage.setItem("rl_apikey",k);onUnlock(k);};
@@ -986,8 +813,6 @@ function ApiKeyGate({onUnlock}) {
   );
 }
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
-// ── ROUTER HELPERS ────────────────────────────────────────────────────────────
 const parseRoute = () => {
   const p = window.location.pathname.replace(/\/+$/,"") || "/";
   if (p === "/" || p === "") return {view:"projects"};
@@ -1017,8 +842,6 @@ function App() {
   const [projects,setProjects]=useState([]);
   const [ready,setReady]=useState(false);
   const [toast,setToast]=useState(null);
-
-  // Derive state from URL
   const [route,setRoute]=useState(parseRoute);
   const {view,projId,runId}=route;
 
@@ -1031,7 +854,6 @@ function App() {
     setRoute(parseRoute());
   };
 
-  // Handle browser back/forward
   useEffect(()=>{
     const onPop = () => setRoute(parseRoute());
     window.addEventListener("popstate", onPop);
@@ -1039,38 +861,13 @@ function App() {
   },[]);
 
   const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
-  useEffect(()=>{sbLoad().then(p=>{setProjects(p);setReady(true);});},[]);
+  useEffect(()=>{sbLoad().then(p=>{setProjects(p||[]);setReady(true);});},[]);
 
   const persist=async(list)=>{setProjects(list);await sbSave(list);};
-
-  const handleCreate=async data=>{
-    const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};
-    const list=[proj,...projects];
-    await persist(list);
-    showToast("Project created ✓");
-    navigate("/project/"+proj.id, ROUTE_TITLES.project(proj.name));
-  };
-  const handleUpdate=async data=>{
-    const list=projects.map(p=>p.id===projId?{...p,...data}:p);
-    await persist(list);
-    showToast("Saved ✓");
-    navigate("/project/"+projId, ROUTE_TITLES.project(data.name));
-  };
-  const handleDelete=async()=>{
-    await sbDelete(projId);
-    const list=projects.filter(p=>p.id!==projId);
-    setProjects(list);
-    try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}
-    showToast("Deleted","warn");
-    navigate("/", ROUTE_TITLES.projects);
-  };
-  const handleRunComplete=async run=>{
-    const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};
-    const list=projects.map(p=>p.id===projId?updProj:p);
-    await persist(list);
-    showToast("Report ready ✓");
-    navigate("/project/"+projId+"/research/"+run.id, ROUTE_TITLES.research(run.name));
-  };
+  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);showToast("Project created ✓");navigate("/project/"+proj.id,ROUTE_TITLES.project(proj.name));};
+  const handleUpdate=async data=>{const list=projects.map(p=>p.id===projId?{...p,...data}:p);await persist(list);showToast("Saved ✓");navigate("/project/"+projId,ROUTE_TITLES.project(data.name));};
+  const handleDelete=async()=>{await sbDelete(projId);const list=projects.filter(p=>p.id!==projId);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");navigate("/",ROUTE_TITLES.projects);};
+  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===projId?updProj:p);await persist(list);showToast("Report ready ✓");navigate("/project/"+projId+"/research/"+run.id,ROUTE_TITLES.research(run.name));};
 
   if(!apiKey)return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
   if(!ready)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
@@ -1096,7 +893,7 @@ function App() {
         ),
         React.createElement("p",{style:{margin:"0 0 40px",fontSize:16,color:"#666",lineHeight:1.6,maxWidth:480,marginLeft:"auto",marginRight:"auto"}},"The most advanced AI for consumer insights. Better data, new capabilities, incredible depth."),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:12}},
-          React.createElement(PBtn,{onClick:()=>setView("newProject"),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started"),
+          React.createElement(PBtn,{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started"),
           React.createElement(GBtn,{style:{padding:"12px 24px",fontSize:14,borderRadius:12}},"Learn more")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginTop:56,borderTop:"1px solid #111",paddingTop:40}},
@@ -1108,7 +905,7 @@ function App() {
       )
     ),
     React.createElement("div",{style:{maxWidth:680,margin:"0 auto",padding:"40px 24px"}},
-              React.createElement("button",{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"},onMouseEnter:e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";},onMouseLeave:e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}},
+      React.createElement("button",{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"},onMouseEnter:e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";},onMouseLeave:e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}},
         React.createElement("div",{style:{width:44,height:44,background:"#FF9500",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#000",flexShrink:0}},"+"),
         React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",marginBottom:2}},"Create New Project"),React.createElement("div",{style:{fontSize:12,color:"#444"}},"Configure geography, persona depth, and research tier")),
         React.createElement("span",{style:{fontSize:18,color:"#333"}},"→")
@@ -1194,7 +991,7 @@ function App() {
 
   if(view==="research"){
     if(!activeProj||!activeRun)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}},"Run not found. ",React.createElement("button",{onClick:()=>navigate("/"),style:{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}},"Go home"));
-    const r=activeRun.results, tierCfg=TIERS[activeRun.tier||2];
+    const r=activeRun.results;
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
       React.createElement(Header,{back:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj.name)),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
@@ -1202,7 +999,6 @@ function App() {
         React.createElement(PBtn,{onClick:()=>navigate("/project/"+projId+"/new",ROUTE_TITLES.newResearch),style:{padding:"8px 18px",fontSize:13}},"+ New Run")
       )}),
       React.createElement("div",{style:{maxWidth:700,margin:"0 auto",padding:"32px 24px"}},
-        // Run header
         React.createElement("div",{style:{marginBottom:24}},
           React.createElement("h2",{style:{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:10,lineHeight:1.1}},activeRun.name,React.createElement("span",{style:{color:"#FF9500"}},".") ),
           React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
@@ -1217,13 +1013,8 @@ function App() {
         React.createElement(ProviderBadges,{providers:r.dataProviders||[]}),
         activeRun.tier===3&&React.createElement(VerifiedStats,{stats:r.verifiedStats||[],worldBankRaw:activeRun.verifiedData?.worldBank}),
         activeRun.tier>=2&&React.createElement(SourcesStrip,{sources:r.searchedSources||[]}),
-        // Archetypes section
         React.createElement("div",{style:{marginBottom:16}},
-          React.createElement("div",{style:{
-            display:"flex",alignItems:"center",justifyContent:"space-between",
-            marginBottom:14,padding:"14px 18px",
-            background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:16
-          }},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,padding:"14px 18px",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:16}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
               React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"🎭"),
               React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff"}},"Consumer Archetypes"),
