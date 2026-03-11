@@ -268,6 +268,7 @@ const stripCites = (text) => {
   if (!text) return "";
   return text.replace(/<cite[^>]*>(.*?)<\/cite>/gs, '$1').replace(/<\/?cite[^>]*>/g,'');
 };
+
 const parseProse = (text) => {
   if (!text) return [];
   const clean = stripCites(text);
@@ -370,6 +371,23 @@ function FCard({icon,title,children}) {
 }
 function Row({cols=2,gap=12,mb=14,children}) {
   return React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat("+cols+",1fr)",gap,marginBottom:mb}},children);
+}
+function Collapsible({icon,title,badge,children,defaultOpen=true,accentColor}) {
+  const [open,setOpen]=useState(defaultOpen);
+  return React.createElement("div",{style:{...css.card,overflow:"hidden",marginBottom:14,borderColor:open&&accentColor?accentColor+"33":"#222"}},
+    React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("span",{style:{fontSize:16}},icon),
+        React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#fff"}},title),
+        badge&&React.createElement("span",{style:{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"2px 8px",fontWeight:600}},badge)
+      ),
+      React.createElement("span",{style:{fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}},"▼")
+    ),
+    open&&React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{height:1,background:"#1a1a1a"}}),
+      React.createElement("div",{style:{padding:20}},children)
+    )
+  );
 }
 function Toast({toast}) {
   if(!toast) return null;
@@ -674,10 +692,22 @@ function ArchetypeCard({archetype, index}) {
   const illSVG = illFn(c1, c2);
   const pct = archetype.sharePercent || 0;
   const desc = stripCites(archetype.description || "");
+
   return React.createElement("div",{
     onMouseEnter:()=>setHovered(true),
     onMouseLeave:()=>setHovered(false),
-    style:{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?c+"55":"#1e1e1e"),borderRadius:20,padding:0,marginBottom:16,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 8px 40px "+c+"20":"none",animation:"fadeInUp .4s ease both",animationDelay:(index*0.08)+"s"}},
+    style:{
+      background: hovered ? "#161616" : "#0d0d0d",
+      border: "1px solid " + (hovered ? c+"55" : "#1e1e1e"),
+      borderRadius: 20,
+      padding: 0,
+      marginBottom: 16,
+      overflow: "hidden",
+      transition: "all .25s",
+      boxShadow: hovered ? "0 8px 40px "+c+"20" : "none",
+      animation: "fadeInUp .4s ease both",
+      animationDelay: (index * 0.08) + "s"
+    }},
     React.createElement("div",{style:{height:3,background:"linear-gradient(90deg,"+c1+","+c2+")",borderRadius:"20px 20px 0 0"}}),
     React.createElement("div",{style:{padding:"20px 22px"}},
       React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16}},
@@ -690,7 +720,7 @@ function ArchetypeCard({archetype, index}) {
               React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,"+c1+","+c2+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#000",flexShrink:0}},index+1),
               React.createElement("span",{style:{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}},archetype.name)
             ),
-            React.createElement("span",{style:{fontSize:18,fontWeight:900,background:"linear-gradient(135deg,"+c1+","+c2+")",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}},pct+"%")
+            React.createElement("span",{style:{fontSize:18,fontWeight:900,color:c,background:"linear-gradient(135deg,"+c1+","+c2+")",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}},pct+"%")
           ),
           React.createElement("div",{style:{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:4}},
             React.createElement("div",{style:{height:6,background:"linear-gradient(90deg,"+c1+","+c2+")",borderRadius:3,width:pct+"%",transition:"width 1s ease",boxShadow:"0 0 8px "+c+"60"}})
@@ -712,6 +742,7 @@ function ProseSection({icon, title, text, accentColor, gradientFrom, gradientTo}
   const ac = accentColor || "#FF9500";
   const gf = gradientFrom || "#FF9500";
   const gt = gradientTo || "#FF6B00";
+
   return React.createElement("div",{style:{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}},
     React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
@@ -739,19 +770,23 @@ function ProseSection({icon, title, text, accentColor, gradientFrom, gradientTo}
 }
 
 const SOLUTION_SUBSECTIONS = [
-  {key:"digital",        icon:"💻", label:"Digital & Technology",    color:"#007AFF", g1:"#007AFF", g2:"#0055FF"},
-  {key:"marketing",      icon:"📣", label:"Marketing & Brand",       color:"#FF2D55", g1:"#FF2D55", g2:"#FF375F"},
-  {key:"product",        icon:"📦", label:"Product & Pricing",       color:"#FF9500", g1:"#FF9500", g2:"#FF6B00"},
-  {key:"customerExperience",icon:"⭐",label:"Customer Experience",   color:"#FFB340", g1:"#FFB340", g2:"#FF9500"},
-  {key:"distribution",   icon:"🚚", label:"Distribution & Sales",    color:"#34C759", g1:"#34C759", g2:"#30D158"},
-  {key:"partnerships",   icon:"🤝", label:"Partnerships & Expansion",color:"#AF52DE", g1:"#AF52DE", g2:"#BF5AF2"},
+  {key:"digital",icon:"💻",label:"Digital & Technology",color:"#007AFF",g1:"#007AFF",g2:"#0055FF"},
+  {key:"marketing",icon:"📣",label:"Marketing & Brand",color:"#FF2D55",g1:"#FF2D55",g2:"#FF375F"},
+  {key:"product",icon:"📦",label:"Product & Pricing",color:"#FF9500",g1:"#FF9500",g2:"#FF6B00"},
+  {key:"customerExperience",icon:"⭐",label:"Customer Experience",color:"#FFB340",g1:"#FFB340",g2:"#FF9500"},
+  {key:"distribution",icon:"🚚",label:"Distribution & Sales",color:"#34C759",g1:"#34C759",g2:"#30D158"},
+  {key:"partnerships",icon:"🤝",label:"Partnerships & Expansion",color:"#AF52DE",g1:"#AF52DE",g2:"#BF5AF2"},
 ];
+
 function SolutionCard({subsection, text, index}) {
   const [hovered, setHovered] = useState(false);
   const clean = stripCites(text || "");
   if (!clean) return null;
   const {icon, label, color, g1, g2} = subsection;
-  return React.createElement("div",{onMouseEnter:()=>setHovered(true),onMouseLeave:()=>setHovered(false),style:{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?color+"44":"#1e1e1e"),borderRadius:16,padding:0,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 4px 24px "+color+"18":"none",animation:"fadeInUp .35s ease both",animationDelay:(index*0.07)+"s"}},
+  return React.createElement("div",{
+    onMouseEnter:()=>setHovered(true),
+    onMouseLeave:()=>setHovered(false),
+    style:{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?color+"44":"#1e1e1e"),borderRadius:16,padding:0,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 4px 24px "+color+"18":"none",animation:"fadeInUp .35s ease both",animationDelay:(index*0.07)+"s"}},
     React.createElement("div",{style:{height:2,background:"linear-gradient(90deg,"+g1+","+g2+")"}}),
     React.createElement("div",{style:{padding:"16px 18px"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
@@ -762,10 +797,12 @@ function SolutionCard({subsection, text, index}) {
     )
   );
 }
+
 function SolutionsSection({solutions}) {
   const [open, setOpen] = useState(true);
   if (!solutions) return null;
   const isObject = typeof solutions === "object" && !Array.isArray(solutions);
+
   return React.createElement("div",{style:{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}},
     React.createElement("button",{onClick:()=>setOpen(o=>!o),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
@@ -778,7 +815,9 @@ function SolutionsSection({solutions}) {
     open&&React.createElement("div",{style:{height:1,background:"linear-gradient(90deg,rgba(255,149,0,0.4),rgba(255,107,0,0.2),transparent)"}}),
     open&&React.createElement("div",{style:{padding:"16px 18px"}},
       isObject
-        ? React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},SOLUTION_SUBSECTIONS.map((sub,i)=>React.createElement(SolutionCard,{key:sub.key,subsection:sub,text:solutions[sub.key],index:i})))
+        ? React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            SOLUTION_SUBSECTIONS.map((sub,i)=>React.createElement(SolutionCard,{key:sub.key,subsection:sub,text:solutions[sub.key],index:i}))
+          )
         : React.createElement(ProseSection,{icon:"💡",title:"Solutions",text:solutions,accentColor:"#FF9500",gradientFrom:"#FF9500",gradientTo:"#FF6B00"})
     )
   );
@@ -842,6 +881,7 @@ function App() {
   const [projects,setProjects]=useState([]);
   const [ready,setReady]=useState(false);
   const [toast,setToast]=useState(null);
+
   const [route,setRoute]=useState(parseRoute);
   const {view,projId,runId}=route;
 
@@ -861,13 +901,38 @@ function App() {
   },[]);
 
   const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
-  useEffect(()=>{sbLoad().then(p=>{setProjects(p||[]);setReady(true);});},[]);
+  useEffect(()=>{sbLoad().then(p=>{setProjects(p);setReady(true);});},[]);
 
   const persist=async(list)=>{setProjects(list);await sbSave(list);};
-  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);showToast("Project created ✓");navigate("/project/"+proj.id,ROUTE_TITLES.project(proj.name));};
-  const handleUpdate=async data=>{const list=projects.map(p=>p.id===projId?{...p,...data}:p);await persist(list);showToast("Saved ✓");navigate("/project/"+projId,ROUTE_TITLES.project(data.name));};
-  const handleDelete=async()=>{await sbDelete(projId);const list=projects.filter(p=>p.id!==projId);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");navigate("/",ROUTE_TITLES.projects);};
-  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===projId?updProj:p);await persist(list);showToast("Report ready ✓");navigate("/project/"+projId+"/research/"+run.id,ROUTE_TITLES.research(run.name));};
+
+  const handleCreate=async data=>{
+    const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};
+    const list=[proj,...projects];
+    await persist(list);
+    showToast("Project created ✓");
+    navigate("/project/"+proj.id, ROUTE_TITLES.project(proj.name));
+  };
+  const handleUpdate=async data=>{
+    const list=projects.map(p=>p.id===projId?{...p,...data}:p);
+    await persist(list);
+    showToast("Saved ✓");
+    navigate("/project/"+projId, ROUTE_TITLES.project(data.name));
+  };
+  const handleDelete=async()=>{
+    await sbDelete(projId);
+    const list=projects.filter(p=>p.id!==projId);
+    setProjects(list);
+    try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}
+    showToast("Deleted","warn");
+    navigate("/", ROUTE_TITLES.projects);
+  };
+  const handleRunComplete=async run=>{
+    const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};
+    const list=projects.map(p=>p.id===projId?updProj:p);
+    await persist(list);
+    showToast("Report ready ✓");
+    navigate("/project/"+projId+"/research/"+run.id, ROUTE_TITLES.research(run.name));
+  };
 
   if(!apiKey)return React.createElement(ApiKeyGate,{onUnlock:k=>setApiKey(k)});
   if(!ready)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}},
@@ -892,9 +957,9 @@ function App() {
           "Make almost any market research with ",React.createElement("span",{style:{color:"#FF9500"}},"ResearchLens.")
         ),
         React.createElement("p",{style:{margin:"0 0 40px",fontSize:16,color:"#666",lineHeight:1.6,maxWidth:480,marginLeft:"auto",marginRight:"auto"}},"The most advanced AI for consumer insights. Better data, new capabilities, incredible depth."),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:12}},
-          React.createElement(PBtn,{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started"),
-          React.createElement(GBtn,{style:{padding:"12px 24px",fontSize:14,borderRadius:12}},"Learn more")
+        // Only the "Get started" button — "Learn more" removed
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center"}},
+          React.createElement(PBtn,{onClick:()=>navigate("/new-project",ROUTE_TITLES.newProject),style:{padding:"13px 28px",fontSize:15,borderRadius:12}},"Get started")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginTop:56,borderTop:"1px solid #111",paddingTop:40}},
           [["3","Research Tiers"],["100+","Markets"],["Live","Web + API Data"]].map(([val,lbl],i)=>React.createElement("div",{key:i,style:{flex:1,textAlign:"center",borderRight:i<2?"1px solid #111":"none"}},
@@ -991,7 +1056,7 @@ function App() {
 
   if(view==="research"){
     if(!activeProj||!activeRun)return React.createElement("div",{style:{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}},"Run not found. ",React.createElement("button",{onClick:()=>navigate("/"),style:{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}},"Go home"));
-    const r=activeRun.results;
+    const r=activeRun.results, tierCfg=TIERS[activeRun.tier||2];
     return React.createElement("div",{style:css.page},
       React.createElement(Toast,{toast}),
       React.createElement(Header,{back:()=>navigate("/project/"+projId,ROUTE_TITLES.project(activeProj.name)),backLabel:"Project",title:activeRun.name,right:React.createElement(React.Fragment,null,
