@@ -1,83 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ResearchLens</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
-body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
-@keyframes rl-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@keyframes float{0%,100%{transform:translateY(0px)}50%{transform:translateY(-6px)}}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-select option{background:#111;color:#fff}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:#000}
-::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
-textarea,input,select,button{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif}
-.stat-shine{background:linear-gradient(90deg,#34C759,#00E676,#34C759);background-size:200%;animation:shimmer 2s infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useEffect,useRef}=React;
+import { useState, useEffect, useRef } from "react";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, ReferenceLine
+} from "recharts";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const SB_URL="https://kdfmsqftwqjkcoonidul.supabase.co";
-const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZm1zcWZ0d3Fqa2Nvb25pZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjc0OTEsImV4cCI6MjA4ODY0MzQ5MX0.bnNns9UePVdJ5dsg3UAd9TiRo6BLIEP4VOwTQv4AlGg";
-const SB_HEADERS={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
-
-const ARCH_COLORS=["#FF9500","#FF6B00","#FFB340","#FF3B30","#34C759","#007AFF","#AF52DE","#FF2D55"];
-const ARCH_GRADIENTS=[["#FF9500","#FF6B00"],["#FF6B00","#FF3B30"],["#FFB340","#FF9500"],["#FF3B30","#FF2D55"],["#34C759","#30D158"],["#007AFF","#0055FF"],["#AF52DE","#BF5AF2"],["#FF2D55","#FF375F"]];
-
-const mkSVG=(id,c1,c2,body)=>`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g${id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs>${body}</svg>`;
-const ARCH_ILLUSTRATIONS=[
-  (c1,c2)=>mkSVG(0,c1,c2,`<ellipse cx="40" cy="68" rx="28" ry="6" fill="${c1}" opacity="0.15"/><rect x="18" y="20" width="44" height="32" rx="4" fill="url(#g0)" opacity="0.9"/><rect x="22" y="24" width="36" height="20" rx="2" fill="#000" opacity="0.5"/><rect x="25" y="27" width="8" height="2" rx="1" fill="${c1}" opacity="0.8"/><rect x="25" y="31" width="14" height="2" rx="1" fill="#fff" opacity="0.3"/><rect x="36" y="27" width="6" height="6" rx="1" fill="${c2}" opacity="0.6"/><rect x="34" y="52" width="12" height="4" rx="1" fill="url(#g0)" opacity="0.7"/><circle cx="58" cy="26" r="6" fill="url(#g0)" opacity="0.8"/><path d="M55 26 L57 28 L62 23" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>`),
-  (c1,c2)=>mkSVG(1,c1,c2,`<ellipse cx="40" cy="70" rx="30" ry="5" fill="${c1}" opacity="0.12"/><rect x="20" y="35" width="40" height="28" rx="3" fill="url(#g1)" opacity="0.85"/><polygon points="16,38 40,18 64,38" fill="${c1}" opacity="0.7"/><rect x="32" y="48" width="10" height="15" rx="2" fill="#000" opacity="0.4"/><rect x="22" y="42" width="8" height="8" rx="1" fill="#fff" opacity="0.2"/><rect x="50" y="42" width="8" height="8" rx="1" fill="#fff" opacity="0.2"/><circle cx="40" cy="30" r="3" fill="#fff" opacity="0.6"/>`),
-  (c1,c2)=>mkSVG(2,c1,c2,`<ellipse cx="40" cy="68" rx="25" ry="5" fill="${c1}" opacity="0.12"/><rect x="24" y="18" width="32" height="48" rx="6" fill="url(#g2)" opacity="0.9"/><rect x="27" y="22" width="26" height="36" rx="3" fill="#000" opacity="0.45"/><circle cx="40" cy="61" r="3" fill="${c1}" opacity="0.7"/><circle cx="33" cy="34" r="4" fill="${c1}" opacity="0.5"/><circle cx="40" cy="30" r="5" fill="${c2}" opacity="0.4"/><path d="M30 42 Q40 38 50 42" stroke="${c1}" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round"/>`),
-  (c1,c2)=>mkSVG(3,c1,c2,`<ellipse cx="40" cy="68" rx="26" ry="5" fill="${c1}" opacity="0.12"/><circle cx="40" cy="28" r="14" fill="url(#g3)" opacity="0.85"/><circle cx="40" cy="28" r="9" fill="#000" opacity="0.35"/><circle cx="40" cy="28" r="4" fill="${c1}" opacity="0.8"/><rect x="32" y="44" width="16" height="18" rx="4" fill="url(#g3)" opacity="0.7"/><path d="M36 50 L38 53 L44 47" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>`),
-  (c1,c2)=>mkSVG(4,c1,c2,`<ellipse cx="40" cy="68" rx="28" ry="5" fill="${c1}" opacity="0.12"/><path d="M40 14 L40 52" stroke="${c1}" stroke-width="2" opacity="0.6"/><path d="M40 24 Q52 18 54 28 Q44 26 40 30" fill="${c1}" opacity="0.7"/><path d="M40 32 Q28 26 26 36 Q36 34 40 38" fill="${c2}" opacity="0.6"/><circle cx="40" cy="52" r="5" fill="url(#g4)" opacity="0.9"/>`),
-  (c1,c2)=>mkSVG(5,c1,c2,`<polygon points="40,14 62,26 62,50 40,62 18,50 18,26" fill="url(#g5)" opacity="0.8"/><polygon points="40,20 56,29 56,47 40,56 24,47 24,29" fill="#000" opacity="0.4"/><circle cx="40" cy="38" r="8" fill="url(#g5)" opacity="0.7"/><circle cx="40" cy="38" r="4" fill="#fff" opacity="0.3"/>`),
-  (c1,c2)=>mkSVG(6,c1,c2,`<circle cx="30" cy="32" r="12" fill="url(#g6)" opacity="0.7"/><circle cx="50" cy="32" r="12" fill="${c2}" opacity="0.5"/><circle cx="40" cy="46" r="12" fill="${c1}" opacity="0.6"/><circle cx="38" cy="34" r="2" fill="#fff" opacity="0.4"/>`),
-  (c1,c2)=>mkSVG(7,c1,c2,`<rect x="22" y="22" width="36" height="40" rx="8" fill="url(#g7)" opacity="0.8"/><rect x="28" y="28" width="24" height="16" rx="3" fill="#000" opacity="0.35"/><rect x="31" y="31" width="6" height="4" rx="1" fill="${c1}" opacity="0.6"/><rect x="39" y="31" width="10" height="2" rx="1" fill="#fff" opacity="0.3"/><circle cx="52" cy="22" r="7" fill="url(#g7)"/><path d="M49 22 L51 24 L56 19" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>`)
+const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif";
+const ARCH_COLORS = ["#FF9500","#FF6B00","#FFB340","#FF3B30","#34C759","#007AFF","#AF52DE","#FF2D55"];
+const ARCH_GRADIENTS = [
+  ["#FF9500","#FF6B00"],["#FF6B00","#FF3B30"],["#FFB340","#FF9500"],["#FF3B30","#FF2D55"],
+  ["#34C759","#30D158"],["#007AFF","#0055FF"],["#AF52DE","#BF5AF2"],["#FF2D55","#FF375F"]
 ];
-
-const TIERS={
+const TIERS = {
   1:{id:1,label:"AI Only",icon:"🧠",badge:"Synthetic · AI-generated",badgeColor:"#888",badgeBg:"rgba(136,136,136,0.1)",badgeBorder:"rgba(136,136,136,0.2)",desc:"Fast internal ideation",time:"~8 sec",providers:[]},
   2:{id:2,label:"AI + Web Search",icon:"🌐",badge:"Grounded · Live web data",badgeColor:"#FF9500",badgeBg:"rgba(255,149,0,0.1)",badgeBorder:"rgba(255,149,0,0.25)",desc:"Market entry & client reports",time:"~20–35 sec",providers:[]},
   3:{id:3,label:"AI + Web + APIs",icon:"🏛",badge:"Verified · Third-party data",badgeColor:"#34C759",badgeBg:"rgba(52,199,89,0.1)",badgeBorder:"rgba(52,199,89,0.25)",desc:"Enterprise & investment decisions",time:"~45–90 sec",providers:["World Bank","REST Countries","Open Exchange"]}
 };
-const PROVIDER_STYLES={
+const PROVIDER_STYLES = {
   "World Bank":{color:"#007AFF",bg:"rgba(0,122,255,0.1)",border:"rgba(0,122,255,0.25)",icon:"🏦"},
   "REST Countries":{color:"#34C759",bg:"rgba(52,199,89,0.1)",border:"rgba(52,199,89,0.25)",icon:"🌍"},
   "Open Exchange":{color:"#FF2D55",bg:"rgba(255,45,85,0.1)",border:"rgba(255,45,85,0.25)",icon:"💱"}
 };
-const STATUS={draft:{color:"#888",bg:"rgba(136,136,136,0.1)",label:"Draft"},active:{color:"#FF9500",bg:"rgba(255,149,0,0.1)",label:"Active"},done:{color:"#34C759",bg:"rgba(52,199,89,0.1)",label:"Done"}};
-const LANGUAGES=[{code:"auto",label:"Auto — match geo"},{code:"en",label:"English"},{code:"ar",label:"Arabic"},{code:"fr",label:"French"},{code:"de",label:"German"},{code:"es",label:"Spanish"},{code:"pt",label:"Portuguese"},{code:"ru",label:"Russian"},{code:"zh",label:"Chinese"},{code:"ja",label:"Japanese"},{code:"tr",label:"Turkish"},{code:"hi",label:"Hindi"}];
-const RESEARCH_GOALS=["Market Entry","Market Sizing","Growth Opportunities","Competitor Analysis","Consumer Segmentation","Brand Positioning","Product Validation","Pricing Strategy","Campaign Targeting","Investment Due Diligence","Customer Retention","New Category Discovery"];
-const TAGS_PRESET=["AdTech","Agriculture","AI & ML","Automotive","B2B","B2C","Banking","Beauty & Personal Care","BioTech","Blockchain & Web3","CleanTech","Construction","Cybersecurity","E-commerce","EdTech","Education","Energy & Utilities","Fashion & Apparel","FMCG","FinTech","Food & Beverage","FoodTech","Gaming","Government & Public Sector","Healthcare","HealthTech","Hospitality & Tourism","HR & Recruitment","Insurance","Legal & Compliance","LegalTech","Logistics & Supply Chain","Manufacturing","MarTech","Media & Entertainment","MedTech","Non-Profit","Pharmaceuticals","PropTech","Real Estate","Retail","SaaS","SpaceTech","Sports & Fitness","Telecom","Travel"].sort((a,b)=>a.localeCompare(b));
-const SOLUTION_SUBSECTIONS=[
-  {key:"digital",icon:"💻",label:"Digital & Technology",color:"#007AFF",g1:"#007AFF",g2:"#0055FF"},
-  {key:"marketing",icon:"📣",label:"Marketing & Brand",color:"#FF2D55",g1:"#FF2D55",g2:"#FF375F"},
-  {key:"product",icon:"📦",label:"Product & Pricing",color:"#FF9500",g1:"#FF9500",g2:"#FF6B00"},
-  {key:"customerExperience",icon:"⭐",label:"Customer Experience",color:"#FFB340",g1:"#FFB340",g2:"#FF9500"},
-  {key:"distribution",icon:"🚚",label:"Distribution & Sales",color:"#34C759",g1:"#34C759",g2:"#30D158"},
-  {key:"partnerships",icon:"🤝",label:"Partnerships & Expansion",color:"#AF52DE",g1:"#AF52DE",g2:"#BF5AF2"}
+const LANGUAGES = [
+  {code:"auto",label:"Auto — match geo"},{code:"en",label:"English"},{code:"ar",label:"Arabic"},
+  {code:"fr",label:"French"},{code:"de",label:"German"},{code:"es",label:"Spanish"},
+  {code:"pt",label:"Portuguese"},{code:"ru",label:"Russian"},{code:"zh",label:"Chinese"},
+  {code:"ja",label:"Japanese"},{code:"tr",label:"Turkish"},{code:"hi",label:"Hindi"}
 ];
-const PERSONA_GROUPS=[
+const RESEARCH_GOALS = [
+  "Market Entry","Market Sizing","Growth Opportunities","Competitor Analysis",
+  "Consumer Segmentation","Brand Positioning","Product Validation","Pricing Strategy",
+  "Campaign Targeting","Investment Due Diligence","Customer Retention","New Category Discovery"
+];
+const TAGS_PRESET = ["AdTech","Agriculture","AI & ML","Automotive","B2B","B2C","Banking","Beauty & Personal Care","BioTech","Blockchain & Web3","CleanTech","Construction","Cybersecurity","E-commerce","EdTech","Education","Energy & Utilities","Fashion & Apparel","FMCG","FinTech","Food & Beverage","FoodTech","Gaming","Government & Public Sector","Healthcare","HealthTech","Hospitality & Tourism","HR & Recruitment","Insurance","Legal & Compliance","LegalTech","Logistics & Supply Chain","Manufacturing","MarTech","Media & Entertainment","MedTech","Non-Profit","Pharmaceuticals","PropTech","Real Estate","Retail","SaaS","SpaceTech","Sports & Fitness","Telecom","Travel"].sort((a,b)=>a.localeCompare(b));
+const PERSONA_GROUPS = [
   {key:"core",icon:"👤",label:"Core Demographics",fields:[
     {key:"ageMin",label:"Age Min",type:"input"},{key:"ageMax",label:"Age Max",type:"input"},
-    {key:"gender",label:"Gender",type:"select",options:["All","Male","Female","Non-binary"]},
-    {key:"incomeLevel",label:"Income Level",type:"select",options:["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"]},
-    {key:"education",label:"Education",type:"select",options:["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"]},
-    {key:"occupation",label:"Occupation",type:"select",options:["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"]},
-    {key:"familySize",label:"Family Size",type:"select",options:["Single","2","2–4","4+","Multi-generational"]},
-    {key:"lifestyle",label:"Lifestyle",type:"select",options:["Urban","Suburban","Rural","Nomadic","Mixed"]}
+    {key:"gender",label:"Gender",type:"select"},{key:"incomeLevel",label:"Income Level",type:"select"},
+    {key:"education",label:"Education",type:"select"},{key:"occupation",label:"Occupation",type:"select"},
+    {key:"familySize",label:"Family Size",type:"select"},{key:"lifestyle",label:"Lifestyle",type:"select"}
   ]},
   {key:"psych",icon:"🧠",label:"Psychological & Cognitive",fields:[
     {key:"digitalSavviness",label:"Digital Savviness",type:"multi",options:["Low","Medium","High","Tech-native"]},
@@ -104,145 +67,216 @@ const PERSONA_GROUPS=[
     {key:"peerRecommendation",label:"Peer Recommendation Weight",type:"multi",options:["Low","Medium","High"]}
   ]}
 ];
-
-// Split into two parts to keep Babel parse size manageable
-const CC_A={"Afghanistan":["Kabul","Kandahar","Herat"],"Albania":["Tirana","Durrës","Vlorë"],"Algeria":["Algiers","Oran","Constantine"],"Argentina":["Buenos Aires","Córdoba","Rosario","Mendoza"],"Australia":["Sydney","Melbourne","Brisbane","Perth","Adelaide","Canberra"],"Austria":["Vienna","Graz","Linz","Salzburg"],"Azerbaijan":["Baku","Ganja","Sumqayıt"],"Bahrain":["Manama","Riffa","Muharraq"],"Bangladesh":["Dhaka","Chittagong","Sylhet","Rajshahi"],"Belgium":["Brussels","Antwerp","Ghent","Bruges"],"Brazil":["São Paulo","Rio de Janeiro","Brasília","Salvador","Fortaleza","Belo Horizonte"],"Canada":["Toronto","Montreal","Vancouver","Calgary","Edmonton","Ottawa","Winnipeg"],"Chile":["Santiago","Valparaíso","Concepción"],"China":["Beijing","Shanghai","Guangzhou","Shenzhen","Chengdu","Wuhan","Hangzhou","Nanjing"],"Colombia":["Bogotá","Medellín","Cali","Barranquilla"],"Czech Republic":["Prague","Brno","Ostrava","Plzeň"],"Denmark":["Copenhagen","Aarhus","Odense","Aalborg"],"Egypt":["Cairo","Alexandria","Giza","Port Said","Luxor","Aswan","Hurghada"],"Finland":["Helsinki","Espoo","Tampere","Oulu"],"France":["Paris","Marseille","Lyon","Toulouse","Nice","Nantes","Bordeaux"],"Germany":["Berlin","Hamburg","Munich","Cologne","Frankfurt","Stuttgart","Leipzig"],"Ghana":["Accra","Kumasi","Tamale"],"Greece":["Athens","Thessaloniki","Patras","Heraklion"]};
-const CC_B={"Hungary":["Budapest","Debrecen","Miskolc","Pécs"],"India":["Mumbai","Delhi","Bengaluru","Hyderabad","Chennai","Kolkata","Pune","Ahmedabad","Jaipur","Lucknow"],"Indonesia":["Jakarta","Surabaya","Bandung","Medan","Makassar","Denpasar"],"Iran":["Tehran","Mashhad","Isfahan","Tabriz","Shiraz"],"Iraq":["Baghdad","Basra","Mosul","Erbil"],"Ireland":["Dublin","Cork","Limerick","Galway"],"Israel":["Tel Aviv","Jerusalem","Haifa","Beersheba"],"Italy":["Rome","Milan","Naples","Turin","Florence","Venice"],"Japan":["Tokyo","Osaka","Nagoya","Sapporo","Fukuoka","Kyoto"],"Jordan":["Amman","Zarqa","Irbid","Aqaba"],"Kazakhstan":["Almaty","Astana","Shymkent","Karaganda"],"Kenya":["Nairobi","Mombasa","Kisumu","Nakuru"],"Kuwait":["Kuwait City","Salmiya","Hawalli"],"Lebanon":["Beirut","Tripoli","Sidon"],"Malaysia":["Kuala Lumpur","George Town","Ipoh","Johor Bahru","Kota Kinabalu"],"Mexico":["Mexico City","Guadalajara","Monterrey","Puebla","Tijuana","Cancún"],"Morocco":["Casablanca","Rabat","Fes","Marrakech","Agadir","Tangier"],"Netherlands":["Amsterdam","Rotterdam","The Hague","Utrecht","Eindhoven"],"New Zealand":["Auckland","Wellington","Christchurch","Hamilton"],"Nigeria":["Lagos","Abuja","Kano","Ibadan","Port Harcourt","Kaduna"]};
-const CC_C={"Norway":["Oslo","Bergen","Trondheim","Stavanger"],"Oman":["Muscat","Salalah","Sohar"],"Pakistan":["Karachi","Lahore","Faisalabad","Rawalpindi","Islamabad","Peshawar","Multan"],"Philippines":["Manila","Quezon City","Davao","Cebu City","Taguig"],"Poland":["Warsaw","Kraków","Łódź","Wrocław","Gdańsk"],"Portugal":["Lisbon","Porto","Braga","Coimbra"],"Qatar":["Doha","Al Rayyan","Al Wakrah","Lusail"],"Romania":["Bucharest","Cluj-Napoca","Timișoara","Iași"],"Russia":["Moscow","Saint Petersburg","Novosibirsk","Yekaterinburg","Kazan"],"Saudi Arabia":["Riyadh","Jeddah","Mecca","Medina","Dammam","Khobar","Abha"],"Singapore":["Singapore"],"South Africa":["Johannesburg","Cape Town","Durban","Pretoria"],"South Korea":["Seoul","Busan","Incheon","Daegu","Daejeon"],"Spain":["Madrid","Barcelona","Valencia","Seville","Zaragoza","Málaga"],"Sweden":["Stockholm","Gothenburg","Malmö","Uppsala"],"Switzerland":["Zurich","Geneva","Basel","Bern"],"Taiwan":["Taipei","Kaohsiung","Taichung","Tainan"],"Thailand":["Bangkok","Chiang Mai","Phuket","Pattaya"],"Tunisia":["Tunis","Sfax","Sousse"],"Turkey":["Istanbul","Ankara","Izmir","Bursa","Antalya","Adana","Gaziantep"],"UAE":["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Al Ain"],"UK":["London","Birmingham","Manchester","Leeds","Glasgow","Liverpool","Bristol","Edinburgh"],"Ukraine":["Kyiv","Kharkiv","Odessa","Dnipro","Lviv"],"USA":["New York","Los Angeles","Chicago","Houston","Phoenix","San Antonio","San Diego","Dallas","San Jose","Austin","San Francisco","Seattle","Denver","Washington DC","Miami","Atlanta","Boston"],"Uzbekistan":["Tashkent","Samarkand","Namangan","Andijan"],"Vietnam":["Ho Chi Minh City","Hanoi","Da Nang","Hai Phong"],"Zimbabwe":["Harare","Bulawayo","Chitungwiza"]};
-const COUNTRY_CITIES={...CC_A,...CC_B,...CC_C};
-const ALL_COUNTRIES=Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
-
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-const uid=()=>Math.random().toString(36).slice(2,10);
-const nowStr=()=>new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-const stripCites=t=>t?(t.replace(/<cite[^>]*>(.*?)<\/cite>/gs,'$1').replace(/<\/?cite[^>]*>/g,'')):"";
-const parseProse=t=>{if(!t)return[];return stripCites(t).split(/\n\n+/).map(p=>p.trim()).filter(Boolean);};
-const emptyPersona=()=>{const p={ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};PERSONA_GROUPS.forEach(g=>g.fields.forEach(f=>{if(f.type==="multi")p[f.key]=[];}));return p;};
-const emptyRForm=()=>({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
-
-// ── SUPABASE ──────────────────────────────────────────────────────────────────
-const sbLoad=async()=>{
-  try{const r=await fetch(SB_URL+"/rest/v1/projects?order=created_at.desc",{headers:SB_HEADERS});if(r.ok){const rows=await r.json();return rows.map(r=>r.data);}}catch(_){}
-  try{const d=localStorage.getItem("rl_v1");return d?JSON.parse(d):[];}catch(_){return [];}
+const emptyPersona = () => {
+  const p={ageMin:"25",ageMax:"45",gender:"All",incomeLevel:"Middle Income",education:"Bachelor's Degree",occupation:"Professional",familySize:"2–4",lifestyle:"Urban"};
+  PERSONA_GROUPS.forEach(g=>g.fields.forEach(f=>{if(f.type==="multi")p[f.key]=[];}));
+  return p;
 };
-const sbSave=async list=>{
-  try{await fetch(SB_URL+"/rest/v1/projects",{method:"POST",headers:{...SB_HEADERS,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(list.map(p=>({id:p.id,data:p})))});}catch(_){}
-  try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}
+const COUNTRY_CITIES = {
+  "Argentina":["Buenos Aires","Córdoba","Rosario","Mendoza"],"Australia":["Sydney","Melbourne","Brisbane","Perth","Adelaide","Canberra"],
+  "Austria":["Vienna","Graz","Linz","Salzburg"],"Bangladesh":["Dhaka","Chittagong","Sylhet"],
+  "Belgium":["Brussels","Antwerp","Ghent","Bruges"],"Brazil":["São Paulo","Rio de Janeiro","Brasília","Salvador","Fortaleza"],
+  "Canada":["Toronto","Montreal","Vancouver","Calgary","Ottawa"],
+  "Chile":["Santiago","Valparaíso","Concepción"],"China":["Beijing","Shanghai","Guangzhou","Shenzhen","Chengdu","Wuhan"],
+  "Colombia":["Bogotá","Medellín","Cali"],"Czech Republic":["Prague","Brno","Ostrava"],
+  "Denmark":["Copenhagen","Aarhus","Odense"],"Egypt":["Cairo","Alexandria","Giza","Luxor","Aswan"],
+  "Finland":["Helsinki","Espoo","Tampere"],"France":["Paris","Marseille","Lyon","Toulouse","Nice","Bordeaux"],
+  "Germany":["Berlin","Hamburg","Munich","Cologne","Frankfurt","Stuttgart"],
+  "Ghana":["Accra","Kumasi","Tamale"],"Greece":["Athens","Thessaloniki","Patras"],
+  "Hungary":["Budapest","Debrecen","Miskolc"],"India":["Mumbai","Delhi","Bengaluru","Hyderabad","Chennai","Kolkata","Pune","Ahmedabad","Jaipur"],
+  "Indonesia":["Jakarta","Surabaya","Bandung","Medan","Denpasar"],
+  "Iran":["Tehran","Mashhad","Isfahan","Tabriz"],"Iraq":["Baghdad","Basra","Mosul","Erbil"],
+  "Ireland":["Dublin","Cork","Limerick","Galway"],"Israel":["Tel Aviv","Jerusalem","Haifa"],
+  "Italy":["Rome","Milan","Naples","Turin","Florence","Venice"],"Japan":["Tokyo","Osaka","Nagoya","Sapporo","Fukuoka","Kyoto"],
+  "Jordan":["Amman","Zarqa","Irbid"],"Kazakhstan":["Almaty","Astana","Shymkent"],
+  "Kenya":["Nairobi","Mombasa","Kisumu"],"Kuwait":["Kuwait City","Salmiya","Hawalli"],
+  "Lebanon":["Beirut","Tripoli","Sidon"],"Malaysia":["Kuala Lumpur","George Town","Ipoh","Johor Bahru"],
+  "Mexico":["Mexico City","Guadalajara","Monterrey","Puebla","Tijuana"],
+  "Morocco":["Casablanca","Rabat","Fes","Marrakech","Agadir","Tangier"],
+  "Netherlands":["Amsterdam","Rotterdam","The Hague","Utrecht"],"New Zealand":["Auckland","Wellington","Christchurch"],
+  "Nigeria":["Lagos","Abuja","Kano","Ibadan","Port Harcourt"],
+  "Norway":["Oslo","Bergen","Trondheim"],"Oman":["Muscat","Salalah","Sohar"],
+  "Pakistan":["Karachi","Lahore","Faisalabad","Islamabad","Peshawar"],
+  "Philippines":["Manila","Quezon City","Davao","Cebu City"],
+  "Poland":["Warsaw","Kraków","Wrocław","Gdańsk"],"Portugal":["Lisbon","Porto","Braga"],
+  "Qatar":["Doha","Al Rayyan","Lusail"],"Romania":["Bucharest","Cluj-Napoca","Timișoara"],
+  "Russia":["Moscow","Saint Petersburg","Novosibirsk","Yekaterinburg"],
+  "Saudi Arabia":["Riyadh","Jeddah","Mecca","Medina","Dammam","Khobar"],
+  "Singapore":["Singapore"],"South Africa":["Johannesburg","Cape Town","Durban","Pretoria"],
+  "South Korea":["Seoul","Busan","Incheon","Daegu"],
+  "Spain":["Madrid","Barcelona","Valencia","Seville","Zaragoza"],
+  "Sweden":["Stockholm","Gothenburg","Malmö"],"Switzerland":["Zurich","Geneva","Basel","Bern"],
+  "Taiwan":["Taipei","Kaohsiung","Taichung"],"Thailand":["Bangkok","Chiang Mai","Phuket"],
+  "Tunisia":["Tunis","Sfax","Sousse"],"Turkey":["Istanbul","Ankara","Izmir","Bursa","Antalya","Gaziantep"],
+  "UAE":["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Al Ain"],
+  "UK":["London","Birmingham","Manchester","Leeds","Glasgow","Liverpool","Bristol","Edinburgh"],
+  "Ukraine":["Kyiv","Kharkiv","Odessa","Lviv"],
+  "USA":["New York","Los Angeles","Chicago","Houston","Phoenix","Dallas","San Jose","Austin","San Francisco","Seattle","Miami","Atlanta","Boston"],
+  "Uzbekistan":["Tashkent","Samarkand","Namangan"],"Vietnam":["Ho Chi Minh City","Hanoi","Da Nang"],
 };
-const sbDelete=async id=>{try{await fetch(SB_URL+"/rest/v1/projects?id=eq."+id,{method:"DELETE",headers:SB_HEADERS});}catch(_){}};
+const ALL_COUNTRIES = Object.keys(COUNTRY_CITIES).sort((a,b)=>a.localeCompare(b));
+const emptyRForm = () => ({name:"",geo:{country:"",cities:[]},researchGoal:"",numberOfPeople:"",language:"auto",tier:2,persona:emptyPersona()});
+const STATUS = {
+  draft:{color:"#888",bg:"rgba(136,136,136,0.1)",label:"Draft"},
+  active:{color:"#FF9500",bg:"rgba(255,149,0,0.1)",label:"Active"},
+  done:{color:"#34C759",bg:"rgba(52,199,89,0.1)",label:"Done"}
+};
+const SOLUTION_SUBSECTIONS = [
+  {key:"digital",icon:"💻",label:"Digital & Technology",color:"#007AFF",g1:"#007AFF",g2:"#0055FF"},
+  {key:"marketing",icon:"📣",label:"Marketing & Brand",color:"#FF2D55",g1:"#FF2D55",g2:"#FF375F"},
+  {key:"product",icon:"📦",label:"Product & Pricing",color:"#FF9500",g1:"#FF9500",g2:"#FF6B00"},
+  {key:"customerExperience",icon:"⭐",label:"Customer Experience",color:"#FFB340",g1:"#FFB340",g2:"#FF9500"},
+  {key:"distribution",icon:"🚚",label:"Distribution & Sales",color:"#34C759",g1:"#34C759",g2:"#30D158"},
+  {key:"partnerships",icon:"🤝",label:"Partnerships & Expansion",color:"#AF52DE",g1:"#AF52DE",g2:"#BF5AF2"},
+];
 
-// ── API / PROMPT ──────────────────────────────────────────────────────────────
-const fetchVerifiedData=async(form,onProgress)=>{
-  const country=form.geo.country.trim();
-  const results={worldBank:{},restCountries:{},exchangeRate:{},fetchedAt:new Date().toISOString()};
-  try{
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2,10);
+const nowStr = () => new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+const stripCites = t => t ? t.replace(/<cite[^>]*>(.*?)<\/cite>/gs,'$1').replace(/<\/?cite[^>]*>/g,'') : "";
+const parseProse = t => { if(!t)return[]; return stripCites(t).split(/\n\n+/).map(p=>p.trim()).filter(Boolean); };
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const SB_URL = "https://kdfmsqftwqjkcoonidul.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZm1zcWZ0d3Fqa2Nvb25pZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjc0OTEsImV4cCI6MjA4ODY0MzQ5MX0.bnNns9UePVdJ5dsg3UAd9TiRo6BLIEP4VOwTQv4AlGg";
+const SB_H = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};
+const sbLoad = async () => { try{const r=await fetch(SB_URL+"/rest/v1/projects?order=created_at.desc",{headers:SB_H});if(r.ok){const rows=await r.json();return rows.map(r=>r.data).filter(Boolean);}}catch(_){} try{const d=localStorage.getItem("rl_v1");return d?JSON.parse(d):[]}catch(_){return [];} };
+const sbSave = async (list) => { try{await fetch(SB_URL+"/rest/v1/projects",{method:"POST",headers:{...SB_H,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(list.map(p=>({id:p.id,data:p})))});}catch(_){} try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){} };
+const sbDelete = async (id) => { try{await fetch(SB_URL+"/rest/v1/projects?id=eq."+id,{method:"DELETE",headers:SB_H});}catch(_){} };
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const fetchVerifiedData = async (form, onProgress) => {
+  const country = form.geo.country.trim();
+  const results = {worldBank:{},restCountries:{},exchangeRate:{},fetchedAt:new Date().toISOString()};
+  try {
     onProgress("Fetching country profile…");
-    const r=await fetch("https://restcountries.com/v3.1/name/"+encodeURIComponent(country)+"?fullText=false&fields=name,capital,region,population,languages,currencies,cca3");
-    if(r.ok){const d=await r.json();const c=d[0];results.restCountries={name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),cca3:c.cca3};}
-  }catch(e){results.restCountries.error=e.message;}
-  const ISO=results.restCountries?.cca3||country.slice(0,3).toUpperCase();
-  const WB=[["NY.GDP.MKTP.CD","GDP (current USD)"],["NY.GDP.PCAP.CD","GDP per capita"],["FP.CPI.TOTL.ZG","Inflation (%)"],["SP.URB.TOTL.IN.ZS","Urban population (%)"],["IT.NET.USER.ZS","Internet users (%)"],["SP.POP.TOTL","Total population"],["SL.UEM.TOTL.ZS","Unemployment (%)"]];
-  try{
+    const res = await fetch("https://restcountries.com/v3.1/name/"+encodeURIComponent(country)+"?fullText=false&fields=name,capital,region,population,languages,currencies,cca2,cca3");
+    if(res.ok){const data=await res.json();const c=data[0];results.restCountries={name:c.name?.common,capital:c.capital?.[0],region:c.region,population:c.population,languages:Object.values(c.languages||{}),currencies:Object.entries(c.currencies||{}).map(([k,v])=>v.name+" ("+(v.symbol||k)+")"),cca2:c.cca2,cca3:c.cca3};}
+  } catch(e){results.restCountries.error=e.message;}
+  const ISO = results.restCountries?.cca3||country.slice(0,3).toUpperCase();
+  const WB = [["NY.GDP.MKTP.CD","GDP (USD)"],["NY.GDP.PCAP.CD","GDP per capita"],["FP.CPI.TOTL.ZG","Inflation (%)"],["SP.URB.TOTL.IN.ZS","Urban pop (%)"],["IT.NET.USER.ZS","Internet users (%)"],["SP.POP.TOTL","Population"],["SL.UEM.TOTL.ZS","Unemployment (%)"],["NY.GDP.MKTP.KD.ZG","GDP Growth (%)"]];
+  try {
     onProgress("Fetching World Bank indicators…");
-    const wbR=await Promise.all(WB.map(([code])=>fetch("https://api.worldbank.org/v2/country/"+ISO+"/indicator/"+code+"?format=json&mrv=3&per_page=3").then(r=>r.ok?r.json():null).catch(()=>null)));
-    const wb={};wbR.forEach((data,i)=>{if(!data||!data[1])return;const entries=data[1].filter(d=>d.value!==null);if(entries.length>0)wb[WB[i][0]]={label:WB[i][1],value:entries[0].value,year:entries[0].date};});
+    const wbR = await Promise.all(WB.map(([code])=>fetch("https://api.worldbank.org/v2/country/"+ISO+"/indicator/"+code+"?format=json&mrv=5&per_page=5").then(r=>r.ok?r.json():null).catch(()=>null)));
+    const wb={};
+    wbR.forEach((data,i)=>{if(!data||!data[1])return;const[code,label]=WB[i];const entries=data[1].filter(d=>d.value!==null);if(entries.length>0){wb[code]={label,value:entries[0].value,year:entries[0].date,history:entries.map(e=>({year:e.date,value:e.value})).reverse()};}});
     results.worldBank=wb;
-  }catch(e){results.worldBank.error=e.message;}
-  try{onProgress("Fetching exchange rates…");const fx=await fetch("https://open.er-api.com/v6/latest/USD");if(fx.ok){const d=await fx.json();results.exchangeRate={base:"USD",lastUpdate:d.time_last_update_utc};}}catch(_){}
+  } catch(e){results.worldBank.error=e.message;}
+  try {
+    onProgress("Fetching exchange rates…");
+    const fxRes=await fetch("https://open.er-api.com/v6/latest/USD");
+    if(fxRes.ok){const fx=await fxRes.json();const cca2=(results.restCountries?.cca2||"").toUpperCase();const currencyMap={"AE":"AED","SA":"SAR","EG":"EGP","TR":"TRY","IN":"INR","BR":"BRL","GB":"GBP","DE":"EUR","FR":"EUR","JP":"JPY","CN":"CNY","AU":"AUD","CA":"CAD","MX":"MXN","RU":"RUB","ZA":"ZAR","NG":"NGN","PK":"PKR","ID":"IDR","PH":"PHP","TH":"THB","MY":"MYR","VN":"VND","KE":"KES","MA":"MAD","TN":"TND","DZ":"DZD","QA":"QAR","KW":"KWD","BH":"BHD","OM":"OMR","JO":"JOD","UA":"UAH","PL":"PLN","SE":"SEK","NO":"NOK","DK":"DKK","CH":"CHF","SG":"SGD","KR":"KRW","TW":"TWD","NZ":"NZD","AR":"ARS","CO":"COP","CL":"CLP","UZ":"UZS","KZ":"KZT","AZ":"AZN","GH":"GHS"};
+    const currCode=currencyMap[cca2]||"USD";const rate=fx.rates?.[currCode];
+    results.exchangeRate={base:"USD",currency:currCode,rate,lastUpdate:fx.time_last_update_utc,allRates:fx.rates};}
+  } catch(e){results.exchangeRate.error=e.message;}
   onProgress("Structuring verified context…");
   return results;
 };
 
-const buildPrompt=(f,vd)=>{
-  const lang=f.language==="auto"?"Detect the primary local language of "+f.geo.country+" and write ALL prose in that language. Keep JSON keys in English.":f.language==="en"?"Write all prose in English.":"Write ALL prose in language code \""+f.language+"\". Keep JSON keys in English.";
-  const p=f.persona,geoStr=f.geo.country+(f.geo.cities?.length?", "+f.geo.cities.join(" / "):"");
-  const multiLines=PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(f2=>{const v=(p[f2.key]||[]);return v.length>0?f2.label+": "+v.join(", "):null;})).filter(Boolean).join(" | ");
-  const base="Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
-  const solSchema='"solutions":{"digital":"2-3 sentences","marketing":"2-3 sentences","product":"2-3 sentences","customerExperience":"2-3 sentences","distribution":"2-3 sentences","partnerships":"2-3 sentences"}';
-  const solRule="solutions must be JSON object with keys: digital, marketing, product, customerExperience, distribution, partnerships. Each value 2-3 sentences clean prose.";
-  if(f.tier===1)return{prompt:"You are a world-class consumer & market research analyst.\n"+lang+"\nIMPORTANT: No XML tags in output.\nReturn ONLY JSON:\n{\"tier\":1,\"language\":\"name\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"str\",\"description\":\"3-4 sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":0}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\","+solSchema+"}\nRules: archetypes min 2, sharePercent sums 100, no bullets. "+solRule+"\n"+base,useWebSearch:false};
-  if(f.tier===2)return{prompt:"You are a world-class consumer & market research analyst with live web search.\nSearch: \""+f.geo.country+" consumer market 2025\", \""+geoStr+" behavior trends 2024\"\n"+lang+"\nIMPORTANT: No XML tags.\nReturn ONLY JSON:\n{\"tier\":2,\"language\":\"name\",\"searchedSources\":[\"up to 8\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"str\",\"description\":\"3-4 sentences\",\"traits\":[\"4-6\"],\"sharePercent\":0}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\","+solSchema+"}\nRules: archetypes min 2, sharePercent sums 100. "+solRule+"\n"+base,useWebSearch:true};
-  const buildVC=d=>{if(!d)return"";const l=[];const rc=d.restCountries||{};if(rc.name)l.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);if(rc.population)l.push("Population: "+Number(rc.population).toLocaleString());const wb=d.worldBank||{};const wbF=Object.values(wb).filter(v=>v?.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");if(wbF.length)l.push("World Bank: "+wbF.join(", "));return l.join("\n");};
-  return{prompt:"You are a world-class consumer & market research analyst with VERIFIED data + web search.\n═══ VERIFIED ═══\n"+buildVC(vd)+"\n═══════════════\nSearch: \""+f.geo.country+" consumer market 2025\", \""+f.geo.country+" investment opportunities\"\n"+lang+"\nIMPORTANT: No XML tags.\nReturn ONLY JSON:\n{\"tier\":3,\"language\":\"name\",\"searchedSources\":[\"up to 10\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"str\",\"value\":\"str\",\"source\":\"str\",\"year\":\"str\"}],\"archetypes\":[{\"name\":\"str\",\"description\":\"4-5 sentences\",\"traits\":[\"5-7\"],\"sharePercent\":0}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\","+solSchema+"}\nRules: archetypes min 3, sharePercent sums 100. "+solRule+"\n"+base,useWebSearch:true};
+const buildPrompt = (f, verifiedData) => {
+  const lang = f.language==="auto"?"Detect the primary local language of "+f.geo.country+" and write ALL prose in that language. Keep JSON keys in English.":f.language==="en"?"Write all prose in English.":"Write ALL prose in language code \""+f.language+"\". Keep JSON keys in English.";
+  const p=f.persona;
+  const geoStr=f.geo.country+(f.geo.cities?.length?", "+f.geo.cities.join(" / "):"");
+  const multiLines=PERSONA_GROUPS.filter(g=>g.key!=="core").flatMap(g=>g.fields.map(field=>{const vals=(p[field.key]||[]);return vals.length>0?field.label+": "+vals.join(", "):null;})).filter(Boolean).join(" | ");
+  const baseInputs="Geo: "+geoStr+" | Goal: "+(f.researchGoal||"Market discovery")+" | Audience: "+(f.numberOfPeople||"unspecified")+"\nPersona: Age "+p.ageMin+"–"+p.ageMax+" | "+p.gender+" | "+p.incomeLevel+" | "+p.education+" | "+p.occupation+"\nExtended: "+(multiLines||"None");
+  const solSchema=`"solutions":{"digital":"2-3 sentences","marketing":"2-3 sentences","product":"2-3 sentences","customerExperience":"2-3 sentences","distribution":"2-3 sentences","partnerships":"2-3 sentences"}`;
+  const solRule="solutions must be JSON object with exactly 6 keys: digital, marketing, product, customerExperience, distribution, partnerships.";
+  if(f.tier===1)return{prompt:"You are a world-class consumer & market research analyst.\n"+lang+"\nDo NOT use XML tags like <cite>. Return ONLY this JSON, no markdown:\n{\"tier\":1,\"language\":\"<n>\",\"searchedSources\":[],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"400-500 word prose\",\"opportunities\":\"300-400 word prose\","+solSchema+"}\nRules: archetypes min 2, sharePercent sums 100, no bullets. "+solRule+"\n"+baseInputs,useWebSearch:false};
+  if(f.tier===2)return{prompt:"You are a world-class consumer & market research analyst with live web search.\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+geoStr+" consumer behavior trends 2024\"\n3. \""+f.geo.country+" market competitors landscape 2024\"\n4. \""+f.geo.country+" economic indicators GDP 2024 2025\"\n"+lang+"\nDo NOT use XML tags like <cite>. Return ONLY this JSON, no markdown:\n{\"tier\":2,\"language\":\"<n>\",\"searchedSources\":[\"<up to 8 sources>\"],\"dataProviders\":[],\"archetypes\":[{\"name\":\"string\",\"description\":\"3-4 sentences\",\"traits\":[\"4-6 labels\"],\"sharePercent\":<int>}],\"insights\":\"450-550 word prose\",\"opportunities\":\"350-450 word prose\","+solSchema+"}\nRules: archetypes min 2, sharePercent sums 100, no bullets. "+solRule+"\n"+baseInputs,useWebSearch:true};
+  const buildVC=(vd)=>{if(!vd)return"";const lines=[];const rc=vd.restCountries||{};if(rc.name)lines.push("Country: "+rc.name+" | Capital: "+rc.capital+" | Region: "+rc.region);if(rc.population)lines.push("Population: "+Number(rc.population).toLocaleString());const wb=vd.worldBank||{};const wbF=Object.values(wb).filter(v=>v&&v.value!=null).map(v=>v.label+": "+(typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value)+" ("+v.year+")");if(wbF.length)lines.push("World Bank:\n  "+wbF.join("\n  "));return lines.join("\n");};
+  return{prompt:"You are a world-class consumer & market research analyst. You have VERIFIED data + web_search.\n═══ VERIFIED DATA ═══\n"+buildVC(verifiedData)+"\n═══════════════════\nREQUIRED SEARCHES:\n1. \""+f.geo.country+" consumer market size 2024 2025\"\n2. \""+f.geo.country+" top companies market share 2024\"\n3. \""+f.geo.country+" consumer spending patterns latest\"\n4. \""+f.geo.country+" investment opportunities growth forecast\"\n"+lang+"\nDo NOT use XML tags like <cite>. Return ONLY this JSON, no markdown:\n{\"tier\":3,\"language\":\"<n>\",\"searchedSources\":[\"<up to 10 sources>\"],\"dataProviders\":[\"World Bank\",\"REST Countries\",\"Open Exchange\"],\"verifiedStats\":[{\"label\":\"string\",\"value\":\"string\",\"source\":\"string\",\"year\":\"string\"}],\"archetypes\":[{\"name\":\"string\",\"description\":\"4-5 sentences\",\"traits\":[\"5-7 labels\"],\"sharePercent\":<int>}],\"insights\":\"550-650 word prose\",\"opportunities\":\"400-500 word prose\","+solSchema+"}\nRules: archetypes min 3, sharePercent sums 100, no bullets. "+solRule+"\n"+baseInputs,useWebSearch:true};
 };
 
-const triggerPDF=(run,projName)=>{
-  const r=run.results,geo=run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:""),tier=TIERS[run.tier||2];
-  const archHTML=(r.archetypes||[]).map((a,i)=>{const c=ARCH_COLORS[i%8],pct=a.sharePercent||0;return `<div style='background:#111;border-radius:12px;padding:18px;border-left:4px solid ${c};margin-bottom:14px'><strong style='font-size:13px;color:#fff'>${a.name}</strong><span style='float:right;color:${c};font-weight:700'>${pct}%</span><p style='font-size:12px;color:#888;margin:8px 0'>${stripCites(a.description)}</p><div>${(a.traits||[]).map(t=>`<span style='font-size:10px;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;color:#ccc;margin:2px'>${t}</span>`).join("")}</div></div>`;}).join("");
-  const prose=t=>(stripCites(t)||"").replace(/\n\n/g,"</p><p style='margin-top:12px'>").replace(/\n/g," ");
-  const html=`<!DOCTYPE html><html><head><meta charset='UTF-8'><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#000;color:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div style='padding:64px;background:#000;min-height:100vh;page-break-after:always'><div style='font-size:14px;font-weight:800;color:#FF9500;margin-bottom:40px'>● ResearchLens</div><div style='font-size:48px;font-weight:900;line-height:1.0;letter-spacing:-2px;margin-bottom:20px'>${run.name||"Research Report"}<br><span style='color:#FF9500'>${geo}.</span></div><div style='font-size:16px;color:#888;margin-bottom:40px'>${run.persona.ageMin}–${run.persona.ageMax} yrs · ${run.persona.incomeLevel}</div></div>${[["🎭","Archetypes",archHTML],["🔍","Insights",`<p style='font-size:13.5px;line-height:1.8;color:#aaa'>${prose(r.insights)}</p>`],["🚀","Opportunities",`<p style='font-size:13.5px;line-height:1.8;color:#aaa'>${prose(r.opportunities)}</p>`]].map(([icon,title,body])=>`<div style='padding:52px 64px;background:#000;page-break-after:always'><div style='font-size:28px;font-weight:900;margin-bottom:32px;color:#fff'>${icon} ${title}</div>${body}</div>`).join("")}</body></html>`;
-  const w=window.open("","_blank");w.document.write(html);w.document.close();w.onload=()=>{w.focus();w.print();};
-};
-
-// ── STYLES ────────────────────────────────────────────────────────────────────
-const css={
-  page:{minHeight:"100vh",background:"#000",color:"#fff"},
+// ── CSS ───────────────────────────────────────────────────────────────────────
+const css = {
+  page:{minHeight:"100vh",background:"#000",color:"#fff",fontFamily:FONT},
   card:{background:"#111",border:"1px solid #222",borderRadius:16},
-  inp:{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,padding:"11px 14px",fontSize:14,color:"#fff",outline:"none",boxSizing:"border-box"},
+  inp:{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,padding:"11px 14px",fontSize:14,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:FONT},
   lbl:{display:"block",fontSize:12,color:"#666",marginBottom:6,fontWeight:500}
 };
 
-// ── UI PRIMITIVES ─────────────────────────────────────────────────────────────
-const Inp=({label,value,onChange,placeholder,type="text",min,rows})=>{
+// ── BASE COMPONENTS ───────────────────────────────────────────────────────────
+function Inp({label,value,onChange,placeholder,type="text",rows}) {
   const [f,setF]=useState(false);
   const s={...css.inp,borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none",resize:rows?"none":undefined};
   if(rows)return <div>{label&&<label style={css.lbl}>{label}</label>}<textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows} style={s} onFocus={()=>setF(true)} onBlur={()=>setF(false)}/></div>;
-  return <div>{label&&<label style={css.lbl}>{label}</label>}<input type={type} min={min} value={value} onChange={onChange} placeholder={placeholder} style={s} onFocus={()=>setF(true)} onBlur={()=>setF(false)}/></div>;
-};
-const Sel=({label,value,onChange,children})=>{
+  return <div>{label&&<label style={css.lbl}>{label}</label>}<input type={type} value={value} onChange={onChange} placeholder={placeholder} style={s} onFocus={()=>setF(true)} onBlur={()=>setF(false)}/></div>;
+}
+function Sel({label,value,onChange,children}) {
   const [f,setF]=useState(false);
   return <div>{label&&<label style={css.lbl}>{label}</label>}<select value={value} onChange={onChange} onFocus={()=>setF(true)} onBlur={()=>setF(false)} style={{...css.inp,appearance:"none",cursor:"pointer",borderColor:f?"#FF9500":"#222",boxShadow:f?"0 0 0 3px rgba(255,149,0,0.15)":"none"}}>{children}</select></div>;
-};
-const PBtn=({onClick,children,disabled,style={}})=>{
+}
+function PBtn({onClick,children,disabled,style={}}) {
   const [h,setH]=useState(false);
-  return <button onClick={onClick} disabled={disabled} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:h&&!disabled?"#FFB340":"#FF9500",border:"none",borderRadius:10,padding:"11px 22px",fontSize:14,fontWeight:700,color:"#000",cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,transition:"all .15s",...style}}>{children}</button>;
-};
-const GBtn=({onClick,children,style={}})=>{
+  return <button onClick={onClick} disabled={disabled} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:h&&!disabled?"#FFB340":"#FF9500",border:"none",borderRadius:10,padding:"11px 22px",fontSize:14,fontWeight:700,color:"#000",cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,transition:"all .15s",fontFamily:FONT,...style}}>{children}</button>;
+}
+function GBtn({onClick,children,style={}}) {
   const [h,setH]=useState(false);
-  return <button onClick={onClick} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:"transparent",border:"1px solid "+(h?"#444":"#222"),borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:500,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",...style}}>{children}</button>;
-};
-const Pill=({label,value,onRemove})=><span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#111",border:"1px solid #222",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#888"}}>
-  {value?<><span style={{color:"#FF9500",fontWeight:600}}>{label+": "}</span>{value}</>:label}
-  {onRemove&&<button onClick={onRemove} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"}} onMouseEnter={e=>e.currentTarget.style.color="#FF3B30"} onMouseLeave={e=>e.currentTarget.style.color="#444"}>×</button>}
-</span>;
-const SBadge=({status})=>{const s=STATUS[status]||STATUS.draft;return <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.color+"30",textTransform:"capitalize"}}>{s.label}</span>;};
-const Dots=()=><span style={{display:"inline-flex",gap:3,marginLeft:6}}>{[0,1,2].map(i=><span key={i} style={{width:5,height:5,borderRadius:"50%",background:"#FF9500",display:"inline-block",animation:"rl-bounce .8s infinite",animationDelay:i*0.15+"s"}}/>)}</span>;
-const FCard=({icon,title,children})=><div style={{...css.card,padding:24,marginBottom:14}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}><span style={{fontSize:14}}>{icon}</span><span style={{fontSize:13,fontWeight:700,color:"#fff"}}>{title}</span></div>{children}</div>;
-const Row=({cols=2,gap=12,mb=14,children})=><div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap,marginBottom:mb}}>{children}</div>;
-const Toast=({toast})=>toast?<div style={{position:"fixed",top:16,right:16,zIndex:999,background:"#111",border:"1px solid "+(toast.type==="warn"?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.4)"),borderRadius:12,padding:"12px 18px",fontSize:13,color:"#fff",boxShadow:"0 8px 32px rgba(0,0,0,0.8)",fontWeight:500}}>{toast.msg}</div>:null;
-
-const Header=({back,backLabel,title,right})=>{
+  return <button onClick={onClick} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:"transparent",border:"1px solid "+(h?"#444":"#222"),borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:500,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",fontFamily:FONT,...style}}>{children}</button>;
+}
+function Pill({label,value,onRemove}) {
+  return <span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#111",border:"1px solid #222",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#888"}}>
+    {value?<><span style={{color:"#FF9500",fontWeight:600}}>{label+": "}</span>{value}</>:label}
+    {onRemove&&<button onClick={onRemove} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:13,lineHeight:1,padding:"0 0 0 2px"}} onMouseEnter={e=>e.currentTarget.style.color="#FF3B30"} onMouseLeave={e=>e.currentTarget.style.color="#444"}>×</button>}
+  </span>;
+}
+function SBadge({status}) {
+  const s=STATUS[status]||STATUS.draft;
+  return <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.color+"30",textTransform:"capitalize"}}>{s.label}</span>;
+}
+function Dots() {
+  return <span style={{display:"inline-flex",gap:3,marginLeft:6}}>{[0,1,2].map(i=><span key={i} style={{width:5,height:5,borderRadius:"50%",background:"#FF9500",display:"inline-block"}}/>)}</span>;
+}
+function FCard({icon,title,children}) {
+  return <div style={{...css.card,padding:24,marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}><span style={{fontSize:14}}>{icon}</span><span style={{fontSize:13,fontWeight:700,color:"#fff"}}>{title}</span></div>
+    {children}
+  </div>;
+}
+function Row({cols=2,gap=12,mb=14,children}) {
+  return <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap,marginBottom:mb}}>{children}</div>;
+}
+function Toast({toast}) {
+  if(!toast)return null;
+  return <div style={{position:"fixed",top:16,right:16,zIndex:999,background:"#111",border:"1px solid "+(toast.type==="warn"?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.4)"),borderRadius:12,padding:"12px 18px",fontSize:13,color:"#fff",boxShadow:"0 8px 32px rgba(0,0,0,0.8)",fontWeight:500}}>{toast.msg}</div>;
+}
+function Header({onBack,backLabel,title,right}) {
   const [h,setH]=useState(false);
-  return <div style={{position:"sticky",top:0,zIndex:20,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #1a1a1a",padding:"0 28px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+  return <div style={{position:"sticky",top:0,zIndex:20,background:"rgba(0,0,0,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #1a1a1a",padding:"0 28px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:FONT}}>
     <div style={{display:"flex",alignItems:"center",gap:14,minWidth:0}}>
-      {back?<button onClick={back} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"1px solid "+(h?"#333":"#1a1a1a"),borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s"}}>{"← "+backLabel}</button>
-      :<div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}><div style={{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}}>●</div><span style={{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}}>ResearchLens</span></div>}
+      {onBack
+        ? <button onClick={onBack} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"1px solid "+(h?"#333":"#1a1a1a"),borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:h?"#fff":"#888",cursor:"pointer",transition:"all .15s",fontFamily:FONT}}>← {backLabel}</button>
+        : <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:14}}>●</div>
+            <span style={{fontSize:15,fontWeight:800,letterSpacing:"-0.5px"}}>ResearchLens</span>
+          </div>}
       {title&&<div style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:3,height:3,borderRadius:"50%",background:"#333"}}/><span style={{fontSize:13,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span></div>}
     </div>
     {right&&<div style={{display:"flex",gap:8,flexShrink:0}}>{right}</div>}
   </div>;
-};
+}
 
 // ── DROPDOWNS ─────────────────────────────────────────────────────────────────
-const CountryDD=({value,onChange})=>{
+function CountryDD({value,onChange}) {
   const [open,setOpen]=useState(false);const [search,setSearch]=useState("");const ref=useRef(null);
   useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
   const filtered=ALL_COUNTRIES.filter(c=>c.toLowerCase().includes(search.toLowerCase()));
   return <div ref={ref} style={{position:"relative"}}>
     <label style={css.lbl}>Country *</label>
     <div onClick={()=>setOpen(o=>!o)} style={{...css.inp,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none"}}>
-      <span style={{color:value?"#fff":"#444"}}>{value||"Select country…"}</span><span style={{fontSize:10,color:"#444"}}>▼</span>
+      <span style={{color:value?"#fff":"#444"}}>{value||"Select country…"}</span>
+      <span style={{fontSize:10,color:"#444"}}>▼</span>
     </div>
     {open&&<div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:280}}>
       <div style={{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}}><input autoFocus value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search country…" style={{...css.inp,padding:"7px 10px",fontSize:12}}/></div>
       <div style={{overflowY:"auto",flex:1}}>
-        {filtered.map(c=><button key={c} onClick={()=>{onChange(c);setSearch("");setOpen(false);}} style={{width:"100%",padding:"9px 14px",background:c===value?"rgba(255,149,0,0.08)":"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:c===value?"#FF9500":"#fff",fontWeight:c===value?700:400}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background=c===value?"rgba(255,149,0,0.08)":"transparent"}>{c}</button>)}
+        {filtered.map(c=><button key={c} onClick={()=>{onChange(c);setSearch("");setOpen(false);}} style={{width:"100%",padding:"9px 14px",background:c===value?"rgba(255,149,0,0.08)":"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:c===value?"#FF9500":"#fff",fontWeight:c===value?700:400,fontFamily:FONT}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background=c===value?"rgba(255,149,0,0.08)":"transparent"}>{c}</button>)}
         {filtered.length===0&&<div style={{padding:14,fontSize:12,color:"#444",textAlign:"center"}}>No results</div>}
       </div>
     </div>}
   </div>;
-};
-const CityMS=({country,value=[],onChange})=>{
+}
+function CityMS({country,value=[],onChange}) {
   const [open,setOpen]=useState(false);const [search,setSearch]=useState("");const ref=useRef(null);
   useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
   const cities=COUNTRY_CITIES[country]||[];
@@ -252,20 +286,20 @@ const CityMS=({country,value=[],onChange})=>{
   return <div ref={ref} style={{position:"relative"}}>
     <label style={css.lbl}>Cities <span style={{color:"#444",fontWeight:400}}>(multi)</span></label>
     <div onClick={()=>setOpen(o=>!o)} style={{...css.inp,minHeight:44,height:"auto",display:"flex",flexWrap:"wrap",gap:4,alignItems:"center",cursor:"pointer",borderColor:open?"#FF9500":"#222",boxShadow:open?"0 0 0 3px rgba(255,149,0,0.15)":"none",padding:"6px 10px"}}>
-      {value.length>0?value.map(c=><span key={c} style={{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600}} onClick={e=>{e.stopPropagation();toggle(c);}}>{c} <span style={{cursor:"pointer",opacity:0.6}}>×</span></span>):<span style={{fontSize:13,color:"#444"}}>Select cities…</span>}
+      {value.length>0?value.map(c=><span key={c} style={{display:"inline-flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"2px 8px",fontSize:11,color:"#FF9500",fontWeight:600}} onClick={e=>{e.stopPropagation();toggle(c);}}>{c} <span style={{fontSize:11,cursor:"pointer",opacity:0.6}}>×</span></span>):<span style={{fontSize:13,color:"#444"}}>Select cities…</span>}
       <span style={{marginLeft:"auto",fontSize:10,color:"#444",flexShrink:0}}>▼</span>
     </div>
     {open&&<div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:60,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:240}}>
       <div style={{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}}><input autoFocus value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search city…" style={{...css.inp,padding:"7px 10px",fontSize:12}}/></div>
       <div style={{overflowY:"auto",flex:1}}>
-        {filtered.map(c=><button key={c} onClick={()=>toggle(c)} style={{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:"#fff"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{c}</button>)}
+        {filtered.map(c=><button key={c} onClick={()=>toggle(c)} style={{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:13,color:"#fff",fontFamily:FONT}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{c}</button>)}
         {filtered.length===0&&<div style={{padding:14,fontSize:12,color:"#444",textAlign:"center"}}>{search?"No results":"All cities selected"}</div>}
       </div>
-      {value.length>0&&<div style={{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:10,color:"#444"}}>{value.length+" selected"}</span><button onClick={()=>onChange([])} style={{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Clear</button></div>}
+      {value.length>0&&<div style={{padding:"7px 14px",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:10,color:"#444"}}>{value.length} selected</span><button onClick={()=>onChange([])} style={{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Clear</button></div>}
     </div>}
   </div>;
-};
-const TagsDD=({tags,setTags,tagInput,setTagInput})=>{
+}
+function TagsDD({tags,setTags,tagInput,setTagInput}) {
   const [open,setOpen]=useState(false);const ref=useRef(null);
   useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
   const toggle=t=>setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);
@@ -280,45 +314,61 @@ const TagsDD=({tags,setTags,tagInput,setTagInput})=>{
     </div>
     {open&&<div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#111",border:"1px solid #222",borderRadius:12,zIndex:50,boxShadow:"0 16px 48px rgba(0,0,0,0.8)",overflow:"hidden",maxHeight:260,display:"flex",flexDirection:"column"}}>
       <div style={{overflowY:"auto",flex:1}}>
-        {tagInput.trim()&&!exactMatch&&<button onClick={()=>{addCustom();setOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left"}}><span style={{fontSize:11,color:"#FF9500",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:6,padding:"2px 7px",fontWeight:700,flexShrink:0}}>+ Custom</span><span style={{fontSize:12,color:"#fff"}}>"{tagInput.trim()}"</span></button>}
-        {filtered.map(t=><button key={t} onClick={()=>{toggle(t);setTagInput("");}} style={{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:12,color:"#fff"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{t}</button>)}
+        {tagInput.trim()&&!exactMatch&&<button onClick={()=>{addCustom();setOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontFamily:FONT}}><span style={{fontSize:11,color:"#FF9500",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:6,padding:"2px 7px",fontWeight:700,flexShrink:0}}>+ Custom</span><span style={{fontSize:12,color:"#fff"}}>"{tagInput.trim()}"</span></button>}
+        {filtered.map(t=><button key={t} onClick={()=>{toggle(t);setTagInput("");}} style={{width:"100%",padding:"9px 14px",background:"transparent",border:"none",borderBottom:"1px solid #1a1a1a",cursor:"pointer",textAlign:"left",fontSize:12,color:"#fff",fontFamily:FONT}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,149,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{t}</button>)}
       </div>
-      {tags.length>0&&<div style={{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:10,color:"#444"}}>{tags.length+" selected"}</span><button onClick={()=>{setTags([]);setOpen(false);}} style={{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Clear all</button></div>}
+      {tags.length>0&&<div style={{padding:"8px 14px",borderTop:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:10,color:"#444"}}>{tags.length} selected</span><button onClick={()=>{setTags([]);setOpen(false);}} style={{fontSize:10,color:"#FF3B30",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Clear all</button></div>}
     </div>}
   </div>;
-};
-const MultiChips=({label,options,value=[],onChange})=>{
+}
+function MultiChips({label,options,value=[],onChange}) {
   const toggle=opt=>onChange(value.includes(opt)?value.filter(v=>v!==opt):[...value,opt]);
-  return <div><label style={css.lbl}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{options.map(opt=>{const a=value.includes(opt);return <button key={opt} onClick={()=>toggle(opt)} style={{fontSize:11,fontWeight:a?700:400,padding:"5px 12px",borderRadius:20,border:"1px solid "+(a?"#FF9500":"#222"),background:a?"rgba(255,149,0,0.12)":"transparent",color:a?"#FF9500":"#888",cursor:"pointer",transition:"all .12s"}}>{opt}</button>;})}</div></div>;
-};
-
-// ── PERSONA SECTION ───────────────────────────────────────────────────────────
-const PersonaSection=({persona,onChange})=>{
+  return <div>
+    <label style={css.lbl}>{label}</label>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+      {options.map(opt=>{const active=value.includes(opt);return <button key={opt} onClick={()=>toggle(opt)} style={{fontSize:11,fontWeight:active?700:400,padding:"5px 12px",borderRadius:20,border:"1px solid "+(active?"#FF9500":"#222"),background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",cursor:"pointer",transition:"all .12s",fontFamily:FONT}}>{opt}</button>;})}
+    </div>
+  </div>;
+}
+function PersonaSection({persona,onChange}) {
   const set=(k,v)=>onChange({...persona,[k]:v});
   const [openG,setOpenG]=useState({core:true});
   return <div>{PERSONA_GROUPS.map(group=>{
     const isOpen=!!openG[group.key];
-    const ma=group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
+    const multiActive=group.fields.filter(f=>f.type==="multi").reduce((s,f)=>s+(persona[f.key]||[]).length,0);
     return <div key={group.key} style={{...css.card,overflow:"hidden",marginBottom:10}}>
-      <button onClick={()=>setOpenG(p=>({...p,[group.key]:!p[group.key]}))} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",background:"transparent",border:"none",cursor:"pointer",color:"#fff"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>{group.icon}</span><span style={{fontSize:13,fontWeight:600,color:"#fff"}}>{group.label}</span>{group.key!=="core"&&ma>0&&<span style={{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}}>{ma}</span>}</div>
+      <button onClick={()=>setOpenG(p=>({...p,[group.key]:!p[group.key]}))} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",background:"transparent",border:"none",cursor:"pointer",color:"#fff",fontFamily:FONT}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14}}>{group.icon}</span>
+          <span style={{fontSize:13,fontWeight:600,color:"#fff"}}>{group.label}</span>
+          {group.key!=="core"&&multiActive>0&&<span style={{fontSize:10,background:"rgba(255,149,0,0.12)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"1px 8px",fontWeight:700}}>{multiActive}</span>}
+        </div>
         <span style={{fontSize:10,color:"#444",transform:isOpen?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}>▼</span>
       </button>
-      {isOpen&&<><div style={{height:1,background:"#1a1a1a"}}/>
-        <div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:16}}>
-          {group.key==="core"?<>
-            <Row cols={3} mb={12}><Inp label="Age Min" type="number" value={persona.ageMin} onChange={e=>set("ageMin",e.target.value)}/><Inp label="Age Max" type="number" value={persona.ageMax} onChange={e=>set("ageMax",e.target.value)}/><Sel label="Gender" value={persona.gender} onChange={e=>set("gender",e.target.value)}>{["All","Male","Female","Non-binary"].map(o=><option key={o}>{o}</option>)}</Sel></Row>
-            <Row cols={3} mb={12}><Sel label="Income Level" value={persona.incomeLevel} onChange={e=>set("incomeLevel",e.target.value)}>{["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"].map(o=><option key={o}>{o}</option>)}</Sel><Sel label="Education" value={persona.education} onChange={e=>set("education",e.target.value)}>{["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"].map(o=><option key={o}>{o}</option>)}</Sel><Sel label="Occupation" value={persona.occupation} onChange={e=>set("occupation",e.target.value)}>{["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"].map(o=><option key={o}>{o}</option>)}</Sel></Row>
-            <Row cols={2} mb={0}><Sel label="Family Size" value={persona.familySize} onChange={e=>set("familySize",e.target.value)}>{["Single","2","2–4","4+","Multi-generational"].map(o=><option key={o}>{o}</option>)}</Sel><Sel label="Lifestyle" value={persona.lifestyle} onChange={e=>set("lifestyle",e.target.value)}>{["Urban","Suburban","Rural","Nomadic","Mixed"].map(o=><option key={o}>{o}</option>)}</Sel></Row>
-          </>:<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>{group.fields.map(f=><MultiChips key={f.key} label={f.label} options={f.options} value={persona[f.key]||[]} onChange={v=>set(f.key,v)}/>)}</div>}
-        </div>
-      </>}
+      {isOpen&&<><div style={{height:1,background:"#1a1a1a"}}/><div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:16}}>
+        {group.key==="core"?<>
+          <Row cols={3} mb={12}>
+            <Inp label="Age Min" type="number" value={persona.ageMin} onChange={e=>set("ageMin",e.target.value)}/>
+            <Inp label="Age Max" type="number" value={persona.ageMax} onChange={e=>set("ageMax",e.target.value)}/>
+            <Sel label="Gender" value={persona.gender} onChange={e=>set("gender",e.target.value)}>{["All","Male","Female","Non-binary"].map(o=><option key={o}>{o}</option>)}</Sel>
+          </Row>
+          <Row cols={3} mb={12}>
+            <Sel label="Income Level" value={persona.incomeLevel} onChange={e=>set("incomeLevel",e.target.value)}>{["Low Income","Lower-Middle","Middle Income","Upper-Middle","High Income"].map(o=><option key={o}>{o}</option>)}</Sel>
+            <Sel label="Education" value={persona.education} onChange={e=>set("education",e.target.value)}>{["High School","Vocational","Bachelor's Degree","Master's Degree","PhD"].map(o=><option key={o}>{o}</option>)}</Sel>
+            <Sel label="Occupation" value={persona.occupation} onChange={e=>set("occupation",e.target.value)}>{["Student","Blue Collar","Professional","Self-Employed","Executive","Retired"].map(o=><option key={o}>{o}</option>)}</Sel>
+          </Row>
+          <Row cols={2} mb={0}>
+            <Sel label="Family Size" value={persona.familySize} onChange={e=>set("familySize",e.target.value)}>{["Single","2","2–4","4+","Multi-generational"].map(o=><option key={o}>{o}</option>)}</Sel>
+            <Sel label="Lifestyle" value={persona.lifestyle} onChange={e=>set("lifestyle",e.target.value)}>{["Urban","Suburban","Rural","Nomadic","Mixed"].map(o=><option key={o}>{o}</option>)}</Sel>
+          </Row>
+        </>:<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>{group.fields.map(f=><MultiChips key={f.key} label={f.label} options={f.options} value={persona[f.key]||[]} onChange={v=>set(f.key,v)}/>)}</div>}
+      </div></>}
     </div>;
   })}</div>;
-};
+}
 
 // ── FORMS ─────────────────────────────────────────────────────────────────────
-const ProjectForm=({initial,onSave,onCancel,onDelete,isEdit})=>{
+function ProjectForm({initial,onSave,onCancel,onDelete,isEdit}) {
   const [name,setName]=useState(initial.name||"");
   const [description,setDescription]=useState(initial.description||"");
   const [tags,setTags]=useState(initial.tags||[]);
@@ -336,11 +386,10 @@ const ProjectForm=({initial,onSave,onCancel,onDelete,isEdit})=>{
       <GBtn onClick={onCancel}>Cancel</GBtn>
       <div style={{flex:1}}><PBtn onClick={handleSave} style={{width:"100%",padding:12}}>{isEdit?"Save Changes":"Create Project"}</PBtn></div>
     </div>
-    {isEdit&&<div style={{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}}><button onClick={onDelete} style={{background:"transparent",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"8px 16px",fontSize:12,color:"#FF3B30",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,59,48,0.08)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🗑 Delete Project</button></div>}
+    {isEdit&&<div style={{marginTop:24,paddingTop:20,borderTop:"1px solid #1a1a1a"}}><button onClick={onDelete} style={{background:"transparent",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"8px 16px",fontSize:12,color:"#FF3B30",cursor:"pointer",fontFamily:FONT}}>🗑 Delete Project</button></div>}
   </div>;
-};
-
-const ResearchForm=({onRun,apiKey})=>{
+}
+function ResearchForm({onRun,apiKey}) {
   const [form,setForm]=useState(emptyRForm());
   const [loading,setLoading]=useState(false);
   const [loadMsg,setLoadMsg]=useState("");
@@ -355,48 +404,52 @@ const ResearchForm=({onRun,apiKey})=>{
     if(form.tier===1){setLoadMsg("Generating archetypes…");timers.push(setTimeout(()=>setLoadMsg("Building insights…"),2000));timers.push(setTimeout(()=>setLoadMsg("Finalising report…"),4000));}
     else if(form.tier===2){setLoadMsg("Searching live web data…");timers.push(setTimeout(()=>setLoadMsg("Analysing signals…"),4000));timers.push(setTimeout(()=>setLoadMsg("Generating insights…"),10000));timers.push(setTimeout(()=>setLoadMsg("Building report…"),18000));}
     else{setLoadMsg("Fetching verified APIs…");}
-    try{
-      let vd=null;
-      if(form.tier===3){vd=await fetchVerifiedData(form,msg=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg}]);});setLoadSteps(p=>[...p,{msg:"✓ Verified data collected"}]);setLoadMsg("Running AI synthesis…");}
-      const {prompt,useWebSearch}=buildPrompt(form,vd);
-      const body={model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}],apiKey};
+    try {
+      let verifiedData=null;
+      if(form.tier===3){verifiedData=await fetchVerifiedData(form,(msg)=>{setLoadMsg(msg);setLoadSteps(p=>[...p,{msg}]);});setLoadSteps(p=>[...p,{msg:"✓ Verified data collected"}]);setLoadMsg("Running AI synthesis…");}
+      const {prompt,useWebSearch}=buildPrompt(form,verifiedData);
+      const body={model:"claude-sonnet-4-20250514",max_tokens:6000,messages:[{role:"user",content:prompt}]};
       if(useWebSearch)body.tools=[{"type":"web_search_20250305","name":"web_search"}];
+      body.apiKey=apiKey;
       const res=await fetch("https://rl-proxy.asif-a-aliyev.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
       if(data.error)throw new Error(data.error.message||"API error");
-      const raw=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("");
-      const m=raw.match(/\{[\s\S]*\}/);
-      if(!m)throw new Error("No JSON in response. Please try again.");
-      const parsed=JSON.parse(m[0]);
+      const raw=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text||"").join("")||"";
+      const jsonMatch=raw.match(/\{[\s\S]*\}/);
+      if(!jsonMatch)throw new Error("No JSON found in response. Please try again.");
+      const parsed=JSON.parse(jsonMatch[0]);
       timers.forEach(clearTimeout);
-      onRun({id:uid(),name:form.name||"Run — "+nowStr(),createdAt:nowStr(),geo:{...form.geo},researchGoal:form.researchGoal,numberOfPeople:form.numberOfPeople,language:form.language,tier:form.tier,persona:{...form.persona},verifiedData:vd,results:parsed});
-    }catch(e){timers.forEach(clearTimeout);setError("Generation failed: "+e.message);setLoading(false);}
+      onRun({id:uid(),name:form.name||"Run — "+nowStr(),createdAt:nowStr(),geo:{...form.geo},researchGoal:form.researchGoal,numberOfPeople:form.numberOfPeople,language:form.language,tier:form.tier,persona:{...form.persona},verifiedData,results:parsed});
+    } catch(e){timers.forEach(clearTimeout);setError("Generation failed: "+e.message);setLoading(false);}
   };
   const tierCfg=TIERS[form.tier];
   return <div style={{maxWidth:660,margin:"0 auto",padding:"32px 24px"}}>
     <div style={{...css.card,padding:20,marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><span style={{fontSize:14}}>⚡</span><span style={{fontSize:13,fontWeight:700,color:"#fff"}}>Research Tier</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-        {Object.values(TIERS).map(t=>{const a=form.tier===t.id;return <button key={t.id} onClick={()=>set("tier",t.id)} style={{background:a?"#1a1a1a":"transparent",border:"1.5px solid "+(a?t.badgeColor:"#222"),borderRadius:12,padding:"14px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s"}}>
+        {Object.values(TIERS).map(t=>{const active=form.tier===t.id;return <button key={t.id} onClick={()=>set("tier",t.id)} style={{background:active?"#1a1a1a":"transparent",border:"1.5px solid "+(active?t.badgeColor:"#222"),borderRadius:12,padding:"14px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s",fontFamily:FONT}}>
           <div style={{fontSize:18,marginBottom:6}}>{t.icon}</div>
-          <div style={{fontSize:11,fontWeight:700,color:a?t.badgeColor:"#fff",marginBottom:4}}>{"Tier "+t.id}</div>
-          <div style={{fontSize:11,fontWeight:600,color:a?t.badgeColor:"#888",marginBottom:6,lineHeight:1.3}}>{t.label}</div>
+          <div style={{fontSize:11,fontWeight:700,color:active?t.badgeColor:"#fff",marginBottom:4}}>Tier {t.id}</div>
+          <div style={{fontSize:11,fontWeight:600,color:active?t.badgeColor:"#888",marginBottom:6,lineHeight:1.3}}>{t.label}</div>
           <div style={{fontSize:10,color:"#444",lineHeight:1.4,marginBottom:4}}>{t.desc}</div>
-          <div style={{fontSize:10,color:a?t.badgeColor:"#444",fontWeight:600}}>{t.time}</div>
+          <div style={{fontSize:10,color:active?t.badgeColor:"#444",fontWeight:600}}>{t.time}</div>
           {t.providers.length>0&&<div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:3}}>{t.providers.map(p=><span key={p} style={{fontSize:9,background:"rgba(52,199,89,0.1)",color:"#34C759",border:"1px solid rgba(52,199,89,0.2)",borderRadius:6,padding:"1px 5px"}}>{p}</span>)}</div>}
         </button>;})}
       </div>
     </div>
     <FCard icon="🏷" title="Run Name"><Inp value={form.name} onChange={e=>set("name",e.target.value)} placeholder="e.g. Cairo Urban Millennials — Q2 2025"/></FCard>
-    <FCard icon="🌍" title="Geography"><Row cols={2} mb={0}><CountryDD value={form.geo.country} onChange={v=>setForm(f=>({...f,geo:{country:v,cities:[]}}))} /><CityMS country={form.geo.country} value={form.geo.cities} onChange={v=>setForm(f=>({...f,geo:{...f.geo,cities:v}}))} /></Row></FCard>
+    <FCard icon="🌍" title="Geography"><Row cols={2} mb={0}><CountryDD value={form.geo.country} onChange={v=>setForm(f=>({...f,geo:{country:v,cities:[]}}))}/><CityMS country={form.geo.country} value={form.geo.cities} onChange={v=>setForm(f=>({...f,geo:{...f.geo,cities:v}}))}/></Row></FCard>
     <FCard icon="🏢" title="Research Context">
       <div style={{marginBottom:16}}>
         <label style={css.lbl}>Research Goal</label>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-          {RESEARCH_GOALS.map(g=>{const a=form.researchGoal===g;return <button key={g} onClick={()=>set("researchGoal",a?"":g)} style={{padding:"9px 12px",borderRadius:10,border:"1px solid "+(a?"#FF9500":"#222"),background:a?"rgba(255,149,0,0.12)":"transparent",color:a?"#FF9500":"#888",fontSize:12,fontWeight:a?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>{g}</button>;})}
+          {RESEARCH_GOALS.map(g=>{const active=form.researchGoal===g;return <button key={g} onClick={()=>set("researchGoal",active?"":g)} style={{padding:"9px 12px",borderRadius:10,border:"1px solid "+(active?"#FF9500":"#222"),background:active?"rgba(255,149,0,0.12)":"transparent",color:active?"#FF9500":"#888",fontSize:12,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s",fontFamily:FONT}}>{g}</button>;})}
         </div>
       </div>
-      <Row mb={0}><Inp label="Target Audience Size" type="number" value={form.numberOfPeople} onChange={e=>set("numberOfPeople",e.target.value)} placeholder="e.g. 50000"/><Sel label="Report Language" value={form.language} onChange={e=>set("language",e.target.value)}>{LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.label}</option>)}</Sel></Row>
+      <Row mb={0}>
+        <Inp label="Target Audience Size" type="number" value={form.numberOfPeople} onChange={e=>set("numberOfPeople",e.target.value)} placeholder="e.g. 50000"/>
+        <Sel label="Report Language" value={form.language} onChange={e=>set("language",e.target.value)}>{LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.label}</option>)}</Sel>
+      </Row>
     </FCard>
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"0 2px"}}><span style={{fontSize:14}}>👤</span><span style={{fontSize:13,fontWeight:700,color:"#fff"}}>Target Persona</span></div>
@@ -404,262 +457,460 @@ const ResearchForm=({onRun,apiKey})=>{
     </div>
     {error&&<div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"12px 16px",fontSize:12,color:"#FF3B30",marginBottom:16}}>{error}</div>}
     {loading&&form.tier===3&&loadSteps.length>0&&<div style={{...css.card,padding:16,marginBottom:16}}>{loadSteps.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#34C759",marginBottom:4}}><span>✓</span><span>{s.msg}</span></div>)}</div>}
-    <button onClick={run} disabled={loading} style={{width:"100%",background:loading?"#111":"#FF9500",border:loading?"1px solid #222":"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:loading?"#666":"#000",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
-      {loading?<>{loadMsg}<Dots/></>:tierCfg.icon+" Run Tier "+form.tier+" Research"}
+    <button onClick={run} disabled={loading} style={{width:"100%",background:loading?"#111":"#FF9500",border:loading?"1px solid #222":"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:loading?"#666":"#000",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s",letterSpacing:"-0.3px",fontFamily:FONT}}>
+      {loading?<>{loadMsg}<Dots/></>:<>{tierCfg.icon} Run Tier {form.tier} Research</>}
     </button>
-    <div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#444"}}>{tierCfg.desc+" · "+tierCfg.time}</div>
+    <div style={{textAlign:"center",marginTop:8,fontSize:11,color:"#444"}}>{tierCfg.desc} · {tierCfg.time}</div>
   </div>;
-};
+}
 
-// ── RESULT COMPONENTS ─────────────────────────────────────────────────────────
-const TierBadge=({tier})=>{const t=TIERS[tier||2];return <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}}>{t.icon+" "+t.badge}</span>;};
-const ProviderBadges=({providers=[]})=>{
+// ── RESULT BADGES ─────────────────────────────────────────────────────────────
+function TierBadge({tier}) {
+  const t=TIERS[tier||2];
+  return <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,padding:"4px 12px",borderRadius:20,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}}>{t.icon} {t.badge}</span>;
+}
+function ProviderBadges({providers=[]}) {
   if(!providers.length)return null;
-  return <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}><span style={{fontSize:10,color:"#444",alignSelf:"center",marginRight:4}}>Data:</span>{providers.map(p=>{const s=PROVIDER_STYLES[p]||{color:"#888",bg:"rgba(136,136,136,0.1)",border:"rgba(136,136,136,0.2)",icon:"📊"};return <span key={p} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.border}}>{s.icon+" "+p}</span>;})}</div>;
-};
-const VerifiedStats=({stats=[],worldBankRaw})=>{
-  const ds=stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v?.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
-  if(!ds.length)return null;
+  return <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+    <span style={{fontSize:10,color:"#444",alignSelf:"center",marginRight:4}}>Data:</span>
+    {providers.map(p=>{const s=PROVIDER_STYLES[p]||{color:"#888",bg:"rgba(136,136,136,0.1)",border:"rgba(136,136,136,0.2)",icon:"📊"};return <span key={p} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:s.bg,color:s.color,border:"1px solid "+s.border}}>{s.icon} {p}</span>;})}
+  </div>;
+}
+function SourcesStrip({sources=[]}) {
+  if(!sources.length)return null;
+  return <div style={{...css.card,padding:"12px 16px",marginBottom:16}}>
+    <div style={{fontSize:10,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:8}}>Sources</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{sources.map((s,i)=><span key={i} style={{fontSize:10,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:8,padding:"3px 9px",color:"#666"}}>{s}</span>)}</div>
+  </div>;
+}
+function VerifiedStats({stats=[],worldBankRaw}) {
+  const displayStats=stats.length>0?stats:Object.values(worldBankRaw||{}).filter(v=>v&&v.value!=null).slice(0,8).map(v=>({label:v.label,value:typeof v.value==="number"?v.value.toLocaleString(undefined,{maximumFractionDigits:2}):v.value,source:"World Bank",year:v.year}));
+  if(!displayStats.length)return null;
   return <div style={{background:"rgba(52,199,89,0.06)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:14,padding:20,marginBottom:16}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span>✅</span><span style={{fontSize:12,fontWeight:700,color:"#34C759"}}>Verified Data Points</span><span style={{fontSize:10,color:"#444",background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:8,padding:"1px 7px"}}>{ds.length}</span></div>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span>✅</span><span style={{fontSize:12,fontWeight:700,color:"#34C759"}}>Verified Data Points</span><span style={{fontSize:10,color:"#444",background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.15)",borderRadius:8,padding:"1px 7px"}}>{displayStats.length}</span></div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
-      {ds.map((s,i)=><div key={i} style={{background:"#111",border:"1px solid rgba(52,199,89,0.12)",borderRadius:10,padding:"10px 12px"}}>
+      {displayStats.map((s,i)=><div key={i} style={{background:"#111",border:"1px solid rgba(52,199,89,0.12)",borderRadius:10,padding:"10px 12px"}}>
         <div style={{fontSize:9,color:"#444",marginBottom:3,display:"flex",justifyContent:"space-between"}}><span>{s.source}</span><span>{s.year}</span></div>
-        <div className="stat-shine" style={{fontSize:14,fontWeight:700,marginBottom:2}}>{s.value}</div>
+        <div style={{fontSize:14,fontWeight:700,marginBottom:2,background:"linear-gradient(90deg,#34C759,#00E676)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{s.value}</div>
         <div style={{fontSize:10,color:"#888",lineHeight:1.3}}>{s.label}</div>
       </div>)}
     </div>
   </div>;
-};
-const SourcesStrip=({sources=[]})=>{
-  if(!sources.length)return null;
-  return <div style={{...css.card,padding:"12px 16px",marginBottom:16}}><div style={{fontSize:10,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:8}}>Sources</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{sources.map((s,i)=><span key={i} style={{fontSize:10,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:8,padding:"3px 9px",color:"#666"}}>{s}</span>)}</div></div>;
-};
-const ArchetypeCard=({archetype,index})=>{
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function ArchetypeDonutChart({archetypes}) {
+  const [active,setActive]=useState(null);
+  if(!archetypes?.length)return null;
+  const data=archetypes.map((a,i)=>({name:a.name,value:a.sharePercent||0,color:ARCH_COLORS[i%8]}));
+  const RADIAN=Math.PI/180;
+  const renderLabel=({cx,cy,midAngle,innerRadius,outerRadius,percent})=>{
+    if(percent<0.07)return null;
+    const r=innerRadius+(outerRadius-innerRadius)*0.5;
+    const x=cx+r*Math.cos(-midAngle*RADIAN),y=cy+r*Math.sin(-midAngle*RADIAN);
+    return <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}>{`${(percent*100).toFixed(0)}%`}</text>;
+  };
+  return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,padding:"20px 22px",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+      <div style={{width:34,height:34,borderRadius:10,background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🎯</div>
+      <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Archetype Distribution</span>
+      <span style={{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}}>{data.length} segments</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:24,flexWrap:"wrap"}}>
+      <ResponsiveContainer width={220} height={220}>
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={95} dataKey="value" labelLine={false} label={renderLabel} onMouseEnter={(_,i)=>setActive(i)} onMouseLeave={()=>setActive(null)}>
+            {data.map((d,i)=><Cell key={i} fill={d.color} opacity={active===null||active===i?1:0.4} stroke={active===i?"#fff":"transparent"} strokeWidth={2}/>)}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+      <div style={{flex:1,minWidth:160,display:"flex",flexDirection:"column",gap:8}}>
+        {data.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",opacity:active===null||active===i?1:0.4,transition:"opacity .2s"}} onMouseEnter={()=>setActive(i)} onMouseLeave={()=>setActive(null)}>
+          <div style={{width:10,height:10,borderRadius:3,background:d.color,flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</div>
+            <div style={{height:3,background:"#1a1a1a",borderRadius:2,marginTop:3}}><div style={{height:3,width:d.value+"%",background:d.color,borderRadius:2}}/></div>
+          </div>
+          <span style={{fontSize:12,fontWeight:700,color:d.color,flexShrink:0}}>{d.value}%</span>
+        </div>)}
+      </div>
+    </div>
+  </div>;
+}
+function WorldBankChart({worldBank}) {
+  if(!worldBank||Object.keys(worldBank).filter(k=>worldBank[k]?.value!=null).length===0)return null;
+  const percentKeys=["FP.CPI.TOTL.ZG","SP.URB.TOTL.IN.ZS","IT.NET.USER.ZS","SL.UEM.TOTL.ZS","NY.GDP.MKTP.KD.ZG"];
+  const barData=percentKeys.map(k=>{const d=worldBank[k];if(!d||d.value==null)return null;return{name:d.label.replace(" (%)","").replace("Urban pop","Urban").replace("Internet users","Internet").replace("GDP Growth","GDP ↑").replace("Unemployment","Unemp."),value:Math.abs(parseFloat(d.value.toFixed(1))),raw:d.value,year:d.year};}).filter(Boolean);
+  const colorFor=(v,name)=>{if(name.includes("Unemp")||name.includes("Inflation"))return v>10?"#FF3B30":v>5?"#FF9500":"#34C759";return "#007AFF";};
+  const gdpPcHistory=worldBank["NY.GDP.PCAP.CD"]?.history||[];
+  return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,padding:"20px 22px",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+      <div style={{width:34,height:34,borderRadius:10,background:"rgba(0,122,255,0.15)",border:"1px solid rgba(0,122,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🏦</div>
+      <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>World Bank Indicators</span>
+      <span style={{fontSize:9,fontWeight:700,background:"rgba(0,122,255,0.15)",color:"#007AFF",border:"1px solid rgba(0,122,255,0.25)",borderRadius:20,padding:"3px 10px"}}>Live data</span>
+    </div>
+    {barData.length>0&&<>
+      <div style={{fontSize:11,color:"#444",marginBottom:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>Key Indicators (%)</div>
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={barData} margin={{top:4,right:8,left:-20,bottom:0}} barSize={28}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false}/>
+          <XAxis dataKey="name" tick={{fill:"#888",fontSize:10}} axisLine={false} tickLine={false}/>
+          <YAxis tick={{fill:"#555",fontSize:9}} axisLine={false} tickLine={false}/>
+          <Tooltip content={({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return <div style={{background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 14px",fontSize:12,fontFamily:FONT}}><div style={{color:"#888",fontSize:11,marginBottom:4}}>{d.name} · {d.year}</div><div style={{color:"#fff",fontWeight:700}}>{d.raw.toFixed(2)}%</div></div>;}}/>
+          <Bar dataKey="value" radius={[4,4,0,0]}>{barData.map((d,i)=><Cell key={i} fill={colorFor(d.raw,d.name)}/>)}</Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </>}
+    {gdpPcHistory.length>1&&<>
+      <div style={{fontSize:11,color:"#444",marginTop:20,marginBottom:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>GDP per Capita Trend (USD)</div>
+      <ResponsiveContainer width="100%" height={100}>
+        <LineChart data={gdpPcHistory} margin={{top:4,right:8,left:-20,bottom:0}}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false}/>
+          <XAxis dataKey="year" tick={{fill:"#555",fontSize:9}} axisLine={false} tickLine={false}/>
+          <YAxis tick={{fill:"#555",fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>"$"+(v>=1000?(v/1000).toFixed(0)+"k":v)}/>
+          <Tooltip content={({active,payload,label})=>{if(!active||!payload?.length)return null;return <div style={{background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 14px",fontSize:12,fontFamily:FONT}}><div style={{color:"#888",fontSize:11,marginBottom:4}}>{label}</div><div style={{color:"#FF9500",fontWeight:700}}>${payload[0].value?.toLocaleString()}</div></div>;}}/>
+          <Line type="monotone" dataKey="value" stroke="#FF9500" strokeWidth={2} dot={{fill:"#FF9500",r:3}} activeDot={{r:5,fill:"#FF9500"}}/>
+        </LineChart>
+      </ResponsiveContainer>
+    </>}
+  </div>;
+}
+function PersonaRadarChart({persona}) {
+  const incomeScore={"Low Income":1,"Lower-Middle":2,"Middle Income":3,"Upper-Middle":4,"High Income":5}[persona.incomeLevel]||3;
+  const eduScore={"High School":1,"Vocational":2,"Bachelor's Degree":3,"Master's Degree":4,"PhD":5}[persona.education]||3;
+  const lifestyleScore={"Rural":1,"Nomadic":2,"Suburban":3,"Mixed":4,"Urban":5}[persona.lifestyle]||3;
+  const techScore=(persona.digitalSavviness||[]).length>0?(persona.digitalSavviness.includes("Tech-native")?5:persona.digitalSavviness.includes("High")?4:persona.digitalSavviness.includes("Medium")?3:2):3;
+  const ageScore=Math.min(5,Math.max(1,Math.round((100-((parseInt(persona.ageMin)||25)+(parseInt(persona.ageMax)||45))/2)/20)));
+  const socialScore=(persona.socialMediaUsage||[]).length>0?(persona.socialMediaUsage.includes("Creator")?5:persona.socialMediaUsage.includes("Active")?4:persona.socialMediaUsage.includes("Passive")?2:1):3;
+  const data=[{axis:"Affluence",value:incomeScore*20},{axis:"Education",value:eduScore*20},{axis:"Urban",value:lifestyleScore*20},{axis:"Digital",value:techScore*20},{axis:"Youth",value:ageScore*20},{axis:"Social",value:socialScore*20}];
+  return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,padding:"20px 22px",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+      <div style={{width:34,height:34,borderRadius:10,background:"rgba(175,82,222,0.15)",border:"1px solid rgba(175,82,222,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🕸</div>
+      <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Persona Profile</span>
+      <span style={{fontSize:9,fontWeight:700,background:"rgba(175,82,222,0.15)",color:"#AF52DE",border:"1px solid rgba(175,82,222,0.25)",borderRadius:20,padding:"3px 10px"}}>Radar</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+      <ResponsiveContainer width={220} height={220}>
+        <RadarChart data={data} cx="50%" cy="50%" outerRadius={80}>
+          <PolarGrid stroke="#222" radialLines={false}/>
+          <PolarAngleAxis dataKey="axis" tick={{fill:"#888",fontSize:10}}/>
+          <Radar dataKey="value" stroke="#AF52DE" fill="#AF52DE" fillOpacity={0.2} strokeWidth={2} dot={{fill:"#AF52DE",r:3}}/>
+        </RadarChart>
+      </ResponsiveContainer>
+      <div style={{flex:1,minWidth:140}}>
+        {data.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontSize:11,color:"#888",width:60,flexShrink:0}}>{d.axis}</span>
+          <div style={{flex:1,height:4,background:"#1a1a1a",borderRadius:2}}><div style={{height:4,width:d.value+"%",background:"linear-gradient(90deg,#AF52DE,#BF5AF2)",borderRadius:2}}/></div>
+          <span style={{fontSize:10,color:"#AF52DE",fontWeight:700,width:28,textAlign:"right"}}>{d.value}</span>
+        </div>)}
+        <div style={{marginTop:12,padding:"8px 12px",background:"rgba(175,82,222,0.06)",border:"1px solid rgba(175,82,222,0.15)",borderRadius:8}}>
+          <div style={{fontSize:10,color:"#666",marginBottom:2}}>Audience</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#fff"}}>{persona.ageMin}–{persona.ageMax} yrs · {persona.gender}</div>
+          <div style={{fontSize:11,color:"#888"}}>{persona.incomeLevel} · {persona.occupation}</div>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+function ExchangeRateCard({exchangeRate}) {
+  if(!exchangeRate?.rate||exchangeRate.currency==="USD")return null;
+  const {currency,rate,lastUpdate}=exchangeRate;
+  const majors=[["EUR","€","#007AFF"],["GBP","£","#34C759"],["JPY","¥","#FF9500"],["CNY","¥","#FF3B30"],["AED","د.إ","#AF52DE"],["SAR","﷼","#FFB340"]];
+  const sparkleSeed=[1.01,0.99,1.02,0.98,1.015,0.995,1.008,0.992,1.01,0.998].map((m,i)=>({i,v:parseFloat((rate*m).toFixed(2))}));
+  return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,padding:"20px 22px",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+      <div style={{width:34,height:34,borderRadius:10,background:"rgba(255,45,85,0.15)",border:"1px solid rgba(255,45,85,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>💱</div>
+      <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Currency Context</span>
+      <span style={{fontSize:9,fontWeight:700,background:"rgba(255,45,85,0.15)",color:"#FF2D55",border:"1px solid rgba(255,45,85,0.25)",borderRadius:20,padding:"3px 10px"}}>Open Exchange Rates</span>
+    </div>
+    <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
+      <div style={{background:"rgba(255,45,85,0.06)",border:"1px solid rgba(255,45,85,0.15)",borderRadius:14,padding:"16px 20px",minWidth:160}}>
+        <div style={{fontSize:11,color:"#666",marginBottom:4}}>1 USD =</div>
+        <div style={{fontSize:28,fontWeight:900,color:"#FF2D55",letterSpacing:"-1px"}}>{rate.toFixed(2)}</div>
+        <div style={{fontSize:13,fontWeight:700,color:"#fff",marginBottom:8}}>{currency}</div>
+        <div style={{fontSize:9,color:"#444"}}>Updated {lastUpdate?.slice(0,16)||"recently"}</div>
+      </div>
+      <div style={{flex:1,minWidth:180}}>
+        <div style={{fontSize:11,color:"#444",marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>Rate context (simulated)</div>
+        <ResponsiveContainer width="100%" height={70}>
+          <LineChart data={sparkleSeed} margin={{top:2,right:4,left:4,bottom:2}}>
+            <Line type="monotone" dataKey="v" stroke="#FF2D55" strokeWidth={2} dot={false}/>
+            <ReferenceLine y={rate} stroke="#333" strokeDasharray="3 3"/>
+          </LineChart>
+        </ResponsiveContainer>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:12}}>
+          {majors.map(([c,sym,col])=>{const r=exchangeRate.allRates?.[c];if(!r)return null;return <span key={c} style={{fontSize:10,background:"#111",border:"1px solid #222",borderRadius:8,padding:"3px 8px",color:col,fontWeight:600}}>{sym}{r.toFixed(2)} {c}</span>;})}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+function TierGauge({tier,sources,stats}) {
+  const score=tier===3?95:tier===2?65:35;
+  const clr=tier===3?"#34C759":tier===2?"#FF9500":"#888";
+  const label=tier===3?"High Confidence":tier===2?"Grounded":"Synthetic";
+  const r=70,cx=90,cy=90,sw=14;
+  const arc=(pct,bg=false)=>{const sa=-Math.PI*0.8,ea=sa+Math.PI*1.6*(bg?1:pct/100);const x1=cx+r*Math.cos(sa),y1=cy+r*Math.sin(sa),x2=cx+r*Math.cos(ea),y2=cy+r*Math.sin(ea);const lg=bg?1:(ea-sa>Math.PI?1:0);return `M ${x1} ${y1} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2}`;};
+  return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,padding:"20px 22px",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+      <div style={{width:34,height:34,borderRadius:10,background:clr+"25",border:"1px solid "+clr+"35",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>📡</div>
+      <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Data Confidence</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:24,flexWrap:"wrap"}}>
+      <svg width={180} height={110} style={{flexShrink:0}}>
+        <path d={arc(100,true)} stroke="#1a1a1a" strokeWidth={sw} fill="none" strokeLinecap="round"/>
+        <path d={arc(score)} stroke={clr} strokeWidth={sw} fill="none" strokeLinecap="round" style={{filter:`drop-shadow(0 0 6px ${clr}80)`}}/>
+        <text x={cx} y={cy+8} textAnchor="middle" fill={clr} fontSize={22} fontWeight={900}>{score}</text>
+        <text x={cx} y={cy+26} textAnchor="middle" fill="#888" fontSize={10}>{label}</text>
+      </svg>
+      <div style={{flex:1,minWidth:160,display:"flex",flexDirection:"column",gap:10}}>
+        {[["Research Tier","Tier "+tier+" — "+TIERS[tier].label,clr],["Sources",(sources?.length||0)+" cited",tier>=2?"#FF9500":"#444"],["Verified Stats",(stats?.length||0)+" data points",tier===3?"#34C759":"#444"]].map(([lbl,val,col],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#111",borderRadius:10,border:"1px solid #1a1a1a"}}>
+          <span style={{fontSize:11,color:"#666"}}>{lbl}</span>
+          <span style={{fontSize:12,fontWeight:700,color:col}}>{val}</span>
+        </div>)}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── ARCHETYPE CARD ────────────────────────────────────────────────────────────
+function ArchetypeCard({archetype,index}) {
   const [hovered,setHovered]=useState(false);
   const c=ARCH_COLORS[index%8];const [c1,c2]=ARCH_GRADIENTS[index%8];
   const pct=archetype.sharePercent||0;
-  const desc=stripCites(archetype.description||"");
-  return <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?c+"55":"#1e1e1e"),borderRadius:20,marginBottom:16,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 8px 40px "+c+"20":"none",animation:"fadeInUp .4s ease both",animationDelay:(index*0.08)+"s"}}>
-    <div style={{height:3,background:"linear-gradient(90deg,"+c1+","+c2+")"}}/>
+  return <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?c+"55":"#1e1e1e"),borderRadius:20,overflow:"hidden",transition:"all .25s",boxShadow:hovered?"0 8px 40px "+c+"20":"none",marginBottom:16}}>
+    <div style={{height:3,background:`linear-gradient(90deg,${c1},${c2})`}}/>
     <div style={{padding:"20px 22px"}}>
       <div style={{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16}}>
-        <div style={{width:80,height:80,flexShrink:0,background:"radial-gradient(circle at 30% 30%,"+c+"22,"+c+"06)",borderRadius:18,border:"1px solid "+c+"25",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-          <div dangerouslySetInnerHTML={{__html:ARCH_ILLUSTRATIONS[index%8](c1,c2)}} style={{width:68,height:68}}/>
+        <div style={{width:48,height:48,flexShrink:0,background:`radial-gradient(circle at 30% 30%,${c}22,${c}06)`,borderRadius:14,border:"1px solid "+c+"25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>
+          {["🎯","🏠","📱","💼","🌿","🚀","🎨","⭐"][index%8]}
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,"+c1+","+c2+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#000",flexShrink:0}}>{index+1}</div>
-              <span style={{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}}>{archetype.name}</span>
+              <div style={{width:22,height:22,borderRadius:"50%",background:`linear-gradient(135deg,${c1},${c2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#000",flexShrink:0}}>{index+1}</div>
+              <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>{archetype.name}</span>
             </div>
-            <span style={{fontSize:18,fontWeight:900,background:"linear-gradient(135deg,"+c1+","+c2+")",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{pct+"%"}</span>
+            <span style={{fontSize:18,fontWeight:900,background:`linear-gradient(135deg,${c1},${c2})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{pct}%</span>
           </div>
-          <div style={{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:4}}><div style={{height:6,background:"linear-gradient(90deg,"+c1+","+c2+")",borderRadius:3,width:pct+"%",transition:"width 1s ease",boxShadow:"0 0 8px "+c+"60"}}/></div>
-          <div style={{fontSize:10,color:"#444"}}>{pct+"% of target market"}</div>
+          <div style={{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:4}}>
+            <div style={{height:6,background:`linear-gradient(90deg,${c1},${c2})`,borderRadius:3,width:pct+"%",boxShadow:"0 0 8px "+c+"60"}}/>
+          </div>
+          <div style={{fontSize:10,color:"#444"}}>{pct}% of target market</div>
         </div>
       </div>
-      <p style={{fontSize:13,color:"#999",lineHeight:1.8,marginBottom:14,borderLeft:"2px solid "+c+"40",paddingLeft:12}}>{desc}</p>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(archetype.traits||[]).map((t,j)=><span key={j} style={{fontSize:11,background:"linear-gradient(135deg,"+c1+"18,"+c2+"10)",border:"1px solid "+c+"35",borderRadius:20,padding:"4px 12px",color:c,fontWeight:600}}>{t}</span>)}</div>
+      <p style={{fontSize:13,color:"#999",lineHeight:1.8,marginBottom:14,borderLeft:"2px solid "+c+"40",paddingLeft:12}}>{stripCites(archetype.description||"")}</p>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {(archetype.traits||[]).map((t,j)=><span key={j} style={{fontSize:11,background:`linear-gradient(135deg,${c1}18,${c2}10)`,border:"1px solid "+c+"35",borderRadius:20,padding:"4px 12px",color:c,fontWeight:600}}>{t}</span>)}
+      </div>
     </div>
   </div>;
-};
-const ProseSection=({icon,title,text,accentColor,gradientFrom,gradientTo})=>{
+}
+
+// ── PROSE SECTION ─────────────────────────────────────────────────────────────
+function ProseSection({icon,title,text,accentColor,gradientFrom,gradientTo}) {
   const paragraphs=parseProse(text);const [open,setOpen]=useState(true);
   const ac=accentColor||"#FF9500",gf=gradientFrom||"#FF9500",gt=gradientTo||"#FF6B00";
   return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}}>
-    <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer",fontFamily:FONT}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,"+gf+"25,"+gt+"15)",border:"1px solid "+ac+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{icon}</div>
-        <span style={{fontSize:15,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}}>{title}</span>
-        {paragraphs.length>0&&<span style={{fontSize:9,fontWeight:700,background:ac+"20",color:ac,border:"1px solid "+ac+"30",borderRadius:20,padding:"2px 8px"}}>{paragraphs.length+" sections"}</span>}
+        <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${gf}25,${gt}15)`,border:"1px solid "+ac+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{icon}</div>
+        <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>{title}</span>
+        {paragraphs.length>0&&<span style={{fontSize:9,fontWeight:700,background:ac+"20",color:ac,border:"1px solid "+ac+"30",borderRadius:20,padding:"2px 8px"}}>{paragraphs.length} sections</span>}
       </div>
       <div style={{width:28,height:28,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}>▼</div>
     </button>
-    {open&&<><div style={{height:1,background:"linear-gradient(90deg,"+gf+"40,"+gt+"20,transparent)"}}/>
-      <div style={{padding:"22px 24px"}}>
-        {paragraphs.length===0?<p style={{fontSize:13,color:"#555",fontStyle:"italic"}}>No content available.</p>
-        :paragraphs.map((para,i)=><div key={i} style={{display:"flex",gap:14,marginBottom:i<paragraphs.length-1?20:0,animation:"fadeInUp .3s ease both",animationDelay:(i*0.05)+"s"}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:4}}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:"linear-gradient(135deg,"+gf+","+gt+")",boxShadow:"0 0 6px "+ac+"60",flexShrink:0}}/>
-            {i<paragraphs.length-1&&<div style={{width:1,flex:1,background:"linear-gradient(180deg,"+ac+"30,transparent)",marginTop:4}}/>}
-          </div>
-          <p style={{fontSize:13.5,color:"#b0b0b0",lineHeight:1.9,margin:0}}>{para}</p>
-        </div>)}
-      </div>
-    </>}
+    {open&&<><div style={{height:1,background:`linear-gradient(90deg,${gf}40,${gt}20,transparent)`}}/>
+    <div style={{padding:"22px 24px"}}>
+      {paragraphs.length===0?<p style={{fontSize:13,color:"#555",fontStyle:"italic"}}>No content available.</p>
+      :paragraphs.map((para,i)=><div key={i} style={{display:"flex",gap:14,marginBottom:i<paragraphs.length-1?20:0}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:4}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:`linear-gradient(135deg,${gf},${gt})`,boxShadow:"0 0 6px "+ac+"60",flexShrink:0}}/>
+          {i<paragraphs.length-1&&<div style={{width:1,flex:1,background:`linear-gradient(180deg,${ac}30,transparent)`,marginTop:4}}/>}
+        </div>
+        <p style={{fontSize:13.5,color:"#b0b0b0",lineHeight:1.9,margin:0}}>{para}</p>
+      </div>)}
+    </div></>}
   </div>;
-};
-const SolutionCard=({subsection,text,index})=>{
+}
+
+// ── SOLUTIONS ─────────────────────────────────────────────────────────────────
+function SolutionCard({subsection,text}) {
   const [hovered,setHovered]=useState(false);
   const clean=stripCites(text||"");if(!clean)return null;
   const {icon,label,color,g1,g2}=subsection;
-  return <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?color+"44":"#1e1e1e"),borderRadius:16,overflow:"hidden",transition:"all .25s",animation:"fadeInUp .35s ease both",animationDelay:(index*0.07)+"s"}}>
-    <div style={{height:2,background:"linear-gradient(90deg,"+g1+","+g2+")"}}/>
+  return <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{background:hovered?"#161616":"#0d0d0d",border:"1px solid "+(hovered?color+"44":"#1e1e1e"),borderRadius:16,padding:0,overflow:"hidden",transition:"all .25s"}}>
+    <div style={{height:2,background:`linear-gradient(90deg,${g1},${g2})`}}/>
     <div style={{padding:"16px 18px"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-        <div style={{width:30,height:30,borderRadius:9,background:"linear-gradient(135deg,"+g1+"25,"+g2+"12)",border:"1px solid "+color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{icon}</div>
+        <div style={{width:30,height:30,borderRadius:9,background:`linear-gradient(135deg,${g1}25,${g2}12)`,border:"1px solid "+color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{icon}</div>
         <span style={{fontSize:12,fontWeight:700,color}}>{label}</span>
       </div>
       <p style={{fontSize:13,color:"#a0a0a0",lineHeight:1.8,margin:0}}>{clean}</p>
     </div>
   </div>;
-};
-const SolutionsSection=({solutions})=>{
+}
+function SolutionsSection({solutions}) {
   const [open,setOpen]=useState(true);if(!solutions)return null;
-  const isObj=typeof solutions==="object"&&!Array.isArray(solutions);
+  const isObject=typeof solutions==="object"&&!Array.isArray(solutions);
   return <div style={{background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:20,overflow:"hidden",marginBottom:16}}>
-    <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px",background:"transparent",border:"none",cursor:"pointer",fontFamily:FONT}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,rgba(255,149,0,0.2),rgba(255,107,0,0.1))",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>💡</div>
         <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Solutions</span>
-        {isObj&&<span style={{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}}>6 strategies</span>}
+        {isObject&&<span style={{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}}>6 strategies</span>}
       </div>
       <div style={{width:28,height:28,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#444",transform:open?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}>▼</div>
     </button>
     {open&&<><div style={{height:1,background:"linear-gradient(90deg,rgba(255,149,0,0.4),rgba(255,107,0,0.2),transparent)"}}/>
-      <div style={{padding:"16px 18px"}}>
-        {isObj?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{SOLUTION_SUBSECTIONS.map((sub,i)=><SolutionCard key={sub.key} subsection={sub} text={solutions[sub.key]} index={i}/>)}</div>
-        :<ProseSection icon="💡" title="Solutions" text={solutions} accentColor="#FF9500" gradientFrom="#FF9500" gradientTo="#FF6B00"/>}
-      </div>
-    </>}
+    <div style={{padding:"16px 18px"}}>
+      {isObject?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{SOLUTION_SUBSECTIONS.map((sub,i)=><SolutionCard key={sub.key} subsection={sub} text={solutions[sub.key]}/>)}</div>
+      :<ProseSection icon="💡" title="Solutions" text={solutions} accentColor="#FF9500" gradientFrom="#FF9500" gradientTo="#FF6B00"/>}
+    </div></>}
   </div>;
-};
+}
 
 // ── API KEY GATE ──────────────────────────────────────────────────────────────
-const ApiKeyGate=({onUnlock})=>{
+function ApiKeyGate({onUnlock}) {
   const [key,setKey]=useState("");const [show,setShow]=useState(false);const [error,setError]=useState("");
-  const go=()=>{const k=key.trim();if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}if(k.length<40){setError("Key too short.");return;}setError("");localStorage.setItem("rl_apikey",k);onUnlock(k);};
-  return <div style={{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+  const handleUnlock=()=>{const k=key.trim();if(!k.startsWith("sk-ant-")){setError("Key must start with sk-ant-...");return;}if(k.length<40){setError("Key looks too short.");return;}setError("");localStorage.setItem("rl_apikey",k);onUnlock(k);};
+  return <div style={{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:FONT}}>
     <div style={{width:"100%",maxWidth:420,textAlign:"center"}}>
       <div style={{width:52,height:52,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:24,margin:"0 auto 24px"}}>●</div>
-      <h1 style={{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8}}>Welcome to <span style={{color:"#FF9500"}}>ResearchLens.</span></h1>
-      <p style={{fontSize:14,color:"#666",marginBottom:32,lineHeight:1.6}}>Enter your Anthropic API key to get started. Stored locally in your browser only.</p>
+      <h1 style={{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,fontFamily:FONT}}>Welcome to <span style={{color:"#FF9500"}}>ResearchLens.</span></h1>
+      <p style={{fontSize:14,color:"#666",marginBottom:32,lineHeight:1.6}}>Enter your Anthropic API key to get started.</p>
       <div style={{background:"#111",border:"1px solid #222",borderRadius:14,padding:20,marginBottom:16,textAlign:"left"}}>
-        <label style={{display:"block",fontSize:11,color:"#666",marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>Anthropic API Key</label>
+        <label style={{display:"block",fontSize:11,color:"#666",marginBottom:8,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase"}}>Anthropic API Key</label>
         <div style={{position:"relative"}}>
-          <input type={show?"text":"password"} value={key} onChange={e=>setKey(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="sk-ant-api03-..." style={{width:"100%",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,padding:"11px 44px 11px 14px",fontSize:13,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+          <input type={show?"text":"password"} value={key} onChange={e=>setKey(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleUnlock()} placeholder="sk-ant-api03-..." style={{width:"100%",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,padding:"11px 44px 11px 14px",fontSize:13,color:"#fff",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
           <button onClick={()=>setShow(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#444"}}>{show?"🙈":"👁"}</button>
         </div>
         {error&&<div style={{marginTop:10,fontSize:12,color:"#FF3B30",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"8px 12px"}}>{error}</div>}
       </div>
-      <button onClick={go} disabled={!key.trim()} style={{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20}}>Unlock ResearchLens →</button>
-      <div style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:12,padding:16,textAlign:"left"}}>
-        <div style={{fontSize:11,fontWeight:700,color:"#444",letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}}>How to get your API key</div>
-        {[["1","Go to console.anthropic.com"],["2","Sign in or create a free account"],["3","Navigate to API Keys → Create Key"],["4","Copy and paste it above"]].map(([n,t])=><div key={n} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:20,height:20,borderRadius:"50%",background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#FF9500",flexShrink:0}}>{n}</div><span style={{fontSize:12,color:"#666"}}>{t}</span></div>)}
-        <a href="https://console.anthropic.com/settings/keys" target="_blank" style={{display:"block",marginTop:10,fontSize:12,color:"#FF9500",textDecoration:"none",fontWeight:600}}>Open Anthropic Console →</a>
-      </div>
+      <button onClick={handleUnlock} disabled={!key.trim()} style={{width:"100%",background:!key.trim()?"#111":"#FF9500",border:!key.trim()?"1px solid #222":"none",borderRadius:12,padding:"13px",fontSize:15,fontWeight:700,color:!key.trim()?"#444":"#000",cursor:!key.trim()?"not-allowed":"pointer",marginBottom:20,fontFamily:FONT}}>Unlock ResearchLens →</button>
     </div>
   </div>;
-};
+}
 
-// ── ROUTER ────────────────────────────────────────────────────────────────────
-const parseRoute=()=>{
-  const p=window.location.pathname.replace(/\/+$/,"")||"/";
-  if(p==="/"||p==="")return{view:"projects"};
-  if(p==="/new-project")return{view:"newProject"};
-  const m1=p.match(/^\/project\/([^/]+)$/);if(m1)return{view:"project",projId:m1[1]};
-  const m2=p.match(/^\/project\/([^/]+)\/edit$/);if(m2)return{view:"editProject",projId:m2[1]};
-  const m3=p.match(/^\/project\/([^/]+)\/new$/);if(m3)return{view:"newResearch",projId:m3[1]};
-  const m4=p.match(/^\/project\/([^/]+)\/research\/([^/]+)$/);if(m4)return{view:"research",projId:m4[1],runId:m4[2]};
-  return{view:"projects"};
-};
-const RT={projects:"ResearchLens",newProject:"New Project — ResearchLens",project:n=>n+" — ResearchLens",editProject:n=>"Edit "+n+" — ResearchLens",newResearch:"New Research — ResearchLens",research:n=>n+" — ResearchLens"};
-
-// ── APP ───────────────────────────────────────────────────────────────────────
-function App(){
-  const [apiKey,setApiKey]=useState(()=>localStorage.getItem("rl_apikey")||"");
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+export default function App() {
+  const [apiKey,setApiKey]=useState(()=>{ try{return localStorage.getItem("rl_apikey")||"";}catch{return "";} });
   const [projects,setProjects]=useState([]);
   const [ready,setReady]=useState(false);
   const [toast,setToast]=useState(null);
-  const [route,setRoute]=useState(parseRoute);
-  const {view,projId,runId}=route;
+
+  // ── STATE-BASED ROUTER (works in iframe/artifact) ──
+  const [view,setView]=useState("projects"); // projects | newProject | project | editProject | newResearch | research
+  const [projId,setProjId]=useState(null);
+  const [runId,setRunId]=useState(null);
+
+  const go=(v,pid=null,rid=null)=>{setView(v);setProjId(pid);setRunId(rid);window.scrollTo(0,0);};
+
   const activeProj=projects.find(p=>p.id===projId)||null;
   const activeRun=activeProj?.runs?.find(r=>r.id===runId)||null;
-  const navigate=(path,title)=>{window.history.pushState({},"",path);document.title=title||"ResearchLens";setRoute(parseRoute());};
-  useEffect(()=>{const h=()=>setRoute(parseRoute());window.addEventListener("popstate",h);return()=>window.removeEventListener("popstate",h);},[]);
+
   const showToast=(msg,type="ok")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
-  useEffect(()=>{sbLoad().then(p=>{setProjects(p);setReady(true);});},[]);
-  const persist=async list=>{setProjects(list);await sbSave(list);};
-  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);showToast("Project created ✓");navigate("/project/"+proj.id,RT.project(proj.name));};
-  const handleUpdate=async data=>{const list=projects.map(p=>p.id===projId?{...p,...data}:p);await persist(list);showToast("Saved ✓");navigate("/project/"+projId,RT.project(data.name));};
-  const handleDelete=async()=>{sbDelete(projId);const list=projects.filter(p=>p.id!==projId);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");navigate("/",RT.projects);};
-  const handleRunComplete=async run=>{const up={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===projId?up:p);await persist(list);showToast("Report ready ✓");navigate("/project/"+projId+"/research/"+run.id,RT.research(run.name));};
+  useEffect(()=>{sbLoad().then(p=>{setProjects(p||[]);setReady(true);});},[]);
+  const persist=async(list)=>{setProjects(list);await sbSave(list);};
+
+  const handleCreate=async data=>{const proj={id:uid(),...data,createdAt:nowStr(),runs:[]};const list=[proj,...projects];await persist(list);showToast("Project created ✓");go("project",proj.id);};
+  const handleUpdate=async data=>{const list=projects.map(p=>p.id===projId?{...p,...data}:p);await persist(list);showToast("Saved ✓");go("project",projId);};
+  const handleDelete=async()=>{await sbDelete(projId);const list=projects.filter(p=>p.id!==projId);setProjects(list);try{localStorage.setItem("rl_v1",JSON.stringify(list));}catch(_){}showToast("Deleted","warn");go("projects");};
+  const handleRunComplete=async run=>{const updProj={...activeProj,runs:[run,...(activeProj.runs||[])]};const list=projects.map(p=>p.id===projId?updProj:p);await persist(list);showToast("Report ready ✓");go("research",projId,run.id);};
 
   if(!apiKey)return <ApiKeyGate onUnlock={k=>setApiKey(k)}/>;
   if(!ready)return <div style={{...css.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{width:40,height:40,borderRadius:"50%",background:"#FF9500",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontWeight:900,fontSize:20}}>●</div><Dots/></div>;
 
-  if(view==="projects")return <div style={css.page}>
+  // ── PROJECTS LIST ───────────────────────────────────────────────────────────
+  if(view==="projects") return <div style={css.page}>
     <Toast toast={toast}/>
-    <Header right={<><GBtn onClick={()=>{localStorage.removeItem("rl_apikey");setApiKey("");}} style={{padding:"6px 12px",fontSize:11}}>🔑 Change Key</GBtn><PBtn onClick={()=>navigate("/new-project",RT.newProject)} style={{padding:"8px 18px",fontSize:13}}>+ New Project</PBtn></>}/>
+    <Header right={<><GBtn onClick={()=>{localStorage.removeItem("rl_apikey");setApiKey("");}} style={{padding:"6px 12px",fontSize:11}}>🔑 Change Key</GBtn><PBtn onClick={()=>go("newProject")} style={{padding:"8px 18px",fontSize:13}}>+ New Project</PBtn></>}/>
     <div style={{padding:"80px 32px 72px",borderBottom:"1px solid #111",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle,#1a1a1a 1px,transparent 1px)",backgroundSize:"32px 32px",opacity:0.4,pointerEvents:"none"}}/>
       <div style={{position:"relative",maxWidth:680,margin:"0 auto",textAlign:"center"}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:7,marginBottom:28}}><span style={{width:7,height:7,borderRadius:"50%",background:"#FF9500",display:"inline-block"}}/><span style={{fontSize:13,fontWeight:600,color:"#888"}}>Synthetic Discovery Platform</span></div>
-        <h1 style={{margin:"0 0 16px",fontSize:52,fontWeight:900,lineHeight:1.0,letterSpacing:"-2.5px",color:"#fff"}}>Make almost any market research with <span style={{color:"#FF9500"}}>ResearchLens.</span></h1>
+        <h1 style={{margin:"0 0 16px",fontSize:52,fontWeight:900,lineHeight:1.0,letterSpacing:"-2.5px",color:"#fff",fontFamily:FONT}}>Make almost any market research with <span style={{color:"#FF9500"}}>ResearchLens.</span></h1>
         <p style={{margin:"0 0 40px",fontSize:16,color:"#666",lineHeight:1.6,maxWidth:480,marginLeft:"auto",marginRight:"auto"}}>The most advanced AI for consumer insights. Better data, new capabilities, incredible depth.</p>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}><PBtn onClick={()=>navigate("/new-project",RT.newProject)} style={{padding:"13px 28px",fontSize:15,borderRadius:12}}>Get started</PBtn></div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",marginTop:56,borderTop:"1px solid #111",paddingTop:40}}>
-          {[["3","Research Tiers"],["100+","Markets"],["Live","Web + API Data"]].map(([val,lbl],i)=><div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?"1px solid #111":"none"}}><div style={{fontSize:28,fontWeight:900,color:i===0?"#FF9500":"#fff",letterSpacing:"-1px",lineHeight:1}}>{val}</div><div style={{fontSize:11,color:"#444",fontWeight:500,marginTop:4}}>{lbl}</div></div>)}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",marginTop:40,borderTop:"1px solid #111",paddingTop:40}}>
+          {[["3","Research Tiers"],["100+","Markets"],["Live","Web + API Data"]].map(([val,lbl],i)=><div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?"1px solid #111":"none"}}>
+            <div style={{fontSize:28,fontWeight:900,color:i===0?"#FF9500":"#fff",letterSpacing:"-1px",lineHeight:1}}>{val}</div>
+            <div style={{fontSize:11,color:"#444",fontWeight:500,marginTop:4}}>{lbl}</div>
+          </div>)}
         </div>
       </div>
     </div>
     <div style={{maxWidth:680,margin:"0 auto",padding:"40px 24px"}}>
-      <button onClick={()=>navigate("/new-project",RT.newProject)} style={{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}}>
+      <button onClick={()=>go("newProject")} style={{width:"100%",display:"flex",alignItems:"center",gap:16,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"20px 24px",cursor:"pointer",marginBottom:28,textAlign:"left",transition:"all .15s",fontFamily:FONT}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#FF9500";e.currentTarget.style.background="#0f0f0f";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#1a1a1a";e.currentTarget.style.background="#0a0a0a";}}>
         <div style={{width:44,height:44,background:"#FF9500",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#000",flexShrink:0}}>+</div>
         <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:2}}>Create New Project</div><div style={{fontSize:12,color:"#444"}}>Configure geography, persona depth, and research tier</div></div>
         <span style={{fontSize:18,color:"#333"}}>→</span>
       </button>
-      {projects.length===0?<div style={{...css.card,padding:64,textAlign:"center"}}><div style={{fontSize:44,marginBottom:16}}>🗂</div><div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}}>No projects yet</div><div style={{fontSize:13,color:"#444",marginBottom:24}}>Create your first project to get started</div><PBtn onClick={()=>navigate("/new-project",RT.newProject)}>Create Project</PBtn></div>
-      :<><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><span style={{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}}>Your Projects</span><span style={{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}}>{projects.length}</span></div>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {projects.map(p=><button key={p.id} onClick={()=>navigate("/project/"+p.id,RT.project(p.name))} style={{...css.card,padding:22,cursor:"pointer",textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#333"} onMouseLeave={e=>e.currentTarget.style.borderColor="#222"}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:15,fontWeight:700,color:"#fff"}}>{p.name}</span><SBadge status={p.status}/></div><span style={{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}}>{p.createdAt}</span></div>
-            {p.description&&<p style={{fontSize:12,color:"#666",marginBottom:10,lineHeight:1.5}}>{p.description}</p>}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(p.tags||[]).map(t=><Pill key={t} label={t}/>)}</div><span style={{fontSize:11,color:"#444",flexShrink:0}}>{"🔬 "+(p.runs||[]).length+" run"+((p.runs||[]).length!==1?"s":"")}</span></div>
-          </button>)}
-        </div>
-      </>}
+      {projects.length===0
+        ? <div style={{...css.card,padding:64,textAlign:"center"}}><div style={{fontSize:44,marginBottom:16}}>🗂</div><div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}}>No projects yet</div><div style={{fontSize:13,color:"#444",marginBottom:24}}>Create your first project to get started</div><PBtn onClick={()=>go("newProject")}>Create Project</PBtn></div>
+        : <>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><span style={{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}}>Your Projects</span><span style={{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}}>{projects.length}</span></div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {projects.map(p=><button key={p.id} onClick={()=>go("project",p.id)} style={{...css.card,padding:22,cursor:"pointer",textAlign:"left",transition:"all .15s",fontFamily:FONT,width:"100%"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#333"} onMouseLeave={e=>e.currentTarget.style.borderColor="#222"}>
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:15,fontWeight:700,color:"#fff"}}>{p.name}</span><SBadge status={p.status}/></div><span style={{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}}>{p.createdAt}</span></div>
+              {p.description&&<p style={{fontSize:12,color:"#666",marginBottom:10,lineHeight:1.5}}>{p.description}</p>}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(p.tags||[]).map(t=><Pill key={t} label={t}/>)}</div><span style={{fontSize:11,color:"#444",flexShrink:0}}>🔬 {(p.runs||[]).length} run{(p.runs||[]).length!==1?"s":""}</span></div>
+            </button>)}
+          </div>
+        </>}
     </div>
   </div>;
 
-  if(view==="newProject")return <div style={css.page}><Header back={()=>navigate("/",RT.projects)} backLabel="Projects" title="New Project"/><ProjectForm initial={{name:"",description:"",status:"draft",tags:[],members:[]}} isEdit={false} onSave={handleCreate} onCancel={()=>navigate("/",RT.projects)}/></div>;
-  if(view==="editProject")return <div style={css.page}><Header back={()=>navigate("/project/"+projId,RT.project(activeProj?.name||""))} backLabel="Project" title="Edit Project"/><ProjectForm initial={activeProj||{}} isEdit={true} onSave={handleUpdate} onCancel={()=>navigate("/project/"+projId,RT.project(activeProj?.name||""))} onDelete={handleDelete}/></div>;
+  // ── NEW PROJECT ─────────────────────────────────────────────────────────────
+  if(view==="newProject") return <div style={css.page}><Header onBack={()=>go("projects")} backLabel="Projects" title="New Project"/><ProjectForm initial={{name:"",description:"",status:"draft",tags:[],members:[]}} isEdit={false} onSave={handleCreate} onCancel={()=>go("projects")}/></div>;
 
+  // ── EDIT PROJECT ────────────────────────────────────────────────────────────
+  if(view==="editProject") return <div style={css.page}><Header onBack={()=>go("project",projId)} backLabel="Project" title="Edit Project"/><ProjectForm initial={activeProj||{}} isEdit={true} onSave={handleUpdate} onCancel={()=>go("project",projId)} onDelete={handleDelete}/></div>;
+
+  // ── PROJECT DETAIL ──────────────────────────────────────────────────────────
   if(view==="project"){
-    if(!activeProj)return <div style={{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}}>Project not found. <button onClick={()=>navigate("/")} style={{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}}>Go home</button></div>;
+    if(!activeProj) return <div style={{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}}>Project not found. <button onClick={()=>go("projects")} style={{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6,fontFamily:FONT}}>Go home</button></div>;
+    const proj=activeProj;
     return <div style={css.page}>
       <Toast toast={toast}/>
-      <Header back={()=>navigate("/",RT.projects)} backLabel="Projects" title={activeProj.name} right={<><GBtn onClick={()=>navigate("/project/"+projId+"/edit",RT.editProject(activeProj.name))}>Edit</GBtn><PBtn onClick={()=>navigate("/project/"+projId+"/new",RT.newResearch)} style={{padding:"8px 18px",fontSize:13}}>+ New Research</PBtn></>}/>
+      <Header onBack={()=>go("projects")} backLabel="Projects" title={proj.name} right={<><GBtn onClick={()=>go("editProject",projId)}>Edit</GBtn><PBtn onClick={()=>go("newResearch",projId)} style={{padding:"8px 18px",fontSize:13}}>+ New Research</PBtn></>}/>
       <div style={{maxWidth:680,margin:"0 auto",padding:"32px 24px"}}>
         <div style={{marginBottom:28}}>
-          <h2 style={{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1}}>{activeProj.name}<span style={{color:"#FF9500"}}>.</span></h2>
-          <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:12}}><SBadge status={activeProj.status}/>{(activeProj.tags||[]).map(t=><Pill key={t} label={t}/>)}</div>
-          {activeProj.description&&<p style={{fontSize:13,color:"#666",lineHeight:1.7,margin:0}}>{activeProj.description}</p>}
+          <h2 style={{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:8,lineHeight:1,fontFamily:FONT}}>{proj.name}<span style={{color:"#FF9500"}}>.</span></h2>
+          <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:12}}><SBadge status={proj.status}/>{(proj.tags||[]).map(t=><Pill key={t} label={t}/>)}</div>
+          {proj.description&&<p style={{fontSize:13,color:"#666",lineHeight:1.7,margin:0}}>{proj.description}</p>}
         </div>
-        <div style={{display:"flex",alignItems:"center",marginBottom:16}}><span style={{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}}>Research Runs</span><span style={{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px",marginLeft:8}}>{(activeProj.runs||[]).length}</span></div>
-        {(activeProj.runs||[]).length===0?<div style={{...css.card,padding:64,textAlign:"center"}}><div style={{fontSize:44,marginBottom:16}}>🔬</div><div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}}>No runs yet</div><div style={{fontSize:13,color:"#444",marginBottom:24}}>Run your first synthetic research to generate insights</div><PBtn onClick={()=>navigate("/project/"+projId+"/new",RT.newResearch)}>+ New Research Run</PBtn></div>
-        :<div style={{display:"flex",flexDirection:"column",gap:10}}>{activeProj.runs.map(run=>{const t=TIERS[run.tier||2];return <button key={run.id} onClick={()=>navigate("/project/"+projId+"/research/"+run.id,RT.research(run.name))} style={{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#333"} onMouseLeave={e=>e.currentTarget.style.borderColor="#222"}>
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:700,color:"#fff"}}>{run.name}</span><span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}}>{"T"+(run.tier||2)}</span></div><span style={{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}}>{run.createdAt}</span></div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}><Pill label="Geo" value={run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:"")}/>{run.researchGoal&&<Pill label="Goal" value={run.researchGoal}/>}<Pill label="Age" value={run.persona.ageMin+"–"+run.persona.ageMax}/>{run.results?.archetypes&&<Pill label="Archetypes" value={run.results.archetypes.length}/>}</div>
-        </button>;})}
-        </div>}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><span style={{fontSize:11,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",color:"#444"}}>Research Runs</span><span style={{fontSize:11,color:"#333",background:"#111",border:"1px solid #1a1a1a",borderRadius:10,padding:"1px 8px"}}>{(proj.runs||[]).length}</span></div>
+        {(proj.runs||[]).length===0
+          ? <div style={{...css.card,padding:64,textAlign:"center"}}><div style={{fontSize:44,marginBottom:16}}>🔬</div><div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:6}}>No runs yet</div><div style={{fontSize:13,color:"#444",marginBottom:24}}>Run your first synthetic research</div><PBtn onClick={()=>go("newResearch",projId)}>+ New Research Run</PBtn></div>
+          : <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {proj.runs.map(run=>{const t=TIERS[run.tier||2];return <button key={run.id} onClick={()=>go("research",projId,run.id)} style={{...css.card,padding:20,cursor:"pointer",textAlign:"left",transition:"all .15s",fontFamily:FONT,width:"100%"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#333"} onMouseLeave={e=>e.currentTarget.style.borderColor="#222"}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:700,color:"#fff"}}>{run.name}</span><span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:10,background:t.badgeBg,color:t.badgeColor,border:"1px solid "+t.badgeBorder}}>T{run.tier||2}</span></div><span style={{fontSize:11,color:"#444",flexShrink:0,marginLeft:8}}>{run.createdAt}</span></div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  <Pill label="Geo" value={run.geo.country+(run.geo.cities?.length?", "+run.geo.cities[0]:"")}/>
+                  {run.researchGoal&&<Pill label="Goal" value={run.researchGoal}/>}
+                  <Pill label="Age" value={run.persona.ageMin+"–"+run.persona.ageMax}/>
+                  {run.results?.archetypes&&<Pill label="Archetypes" value={run.results.archetypes.length}/>}
+                </div>
+              </button>;})}
+            </div>}
       </div>
     </div>;
   }
 
-  if(view==="newResearch")return <div style={css.page}><Header back={()=>navigate("/project/"+projId,RT.project(activeProj?.name||""))} backLabel="Project" title="New Research Run"/><ResearchForm onRun={handleRunComplete} apiKey={apiKey}/></div>;
+  // ── NEW RESEARCH ────────────────────────────────────────────────────────────
+  if(view==="newResearch") return <div style={css.page}><Header onBack={()=>go("project",projId)} backLabel="Project" title="New Research Run"/><ResearchForm onRun={handleRunComplete} apiKey={apiKey}/></div>;
 
+  // ── RESEARCH RESULTS ────────────────────────────────────────────────────────
   if(view==="research"){
-    if(!activeProj||!activeRun)return <div style={{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}}>Run not found. <button onClick={()=>navigate("/")} style={{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6}}>Go home</button></div>;
+    if(!activeProj||!activeRun) return <div style={{...css.page,display:"flex",alignItems:"center",justifyContent:"center",color:"#444",fontSize:14}}>Run not found. <button onClick={()=>go("projects")} style={{color:"#FF9500",background:"none",border:"none",cursor:"pointer",marginLeft:6,fontFamily:FONT}}>Go home</button></div>;
     const r=activeRun.results;
     return <div style={css.page}>
       <Toast toast={toast}/>
-      <Header back={()=>navigate("/project/"+projId,RT.project(activeProj.name))} backLabel="Project" title={activeRun.name} right={<><GBtn onClick={()=>triggerPDF(activeRun,activeProj?.name)}>🖨 PDF</GBtn><PBtn onClick={()=>navigate("/project/"+projId+"/new",RT.newResearch)} style={{padding:"8px 18px",fontSize:13}}>+ New Run</PBtn></>}/>
+      <Header onBack={()=>go("project",projId)} backLabel="Project" title={activeRun.name} right={<PBtn onClick={()=>go("newResearch",projId)} style={{padding:"8px 18px",fontSize:13}}>+ New Run</PBtn>}/>
       <div style={{maxWidth:700,margin:"0 auto",padding:"32px 24px"}}>
         <div style={{marginBottom:24}}>
-          <h2 style={{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:10,lineHeight:1.1}}>{activeRun.name}<span style={{color:"#FF9500"}}>.</span></h2>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+          <h2 style={{fontSize:28,fontWeight:900,letterSpacing:"-1px",color:"#fff",marginBottom:10,lineHeight:1.1,fontFamily:FONT}}>{activeRun.name}<span style={{color:"#FF9500"}}>.</span></h2>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
             <TierBadge tier={activeRun.tier}/>
             <Pill label="Geo" value={activeRun.geo.country+(activeRun.geo.cities?.length?", "+activeRun.geo.cities[0]:"")}/>
             {activeRun.researchGoal&&<Pill label="Goal" value={activeRun.researchGoal}/>}
@@ -668,28 +919,39 @@ function App(){
             {activeRun.numberOfPeople&&<Pill label="Audience" value={Number(activeRun.numberOfPeople).toLocaleString()}/>}
           </div>
         </div>
+
+        {/* Charts row */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:4}}>
+          <TierGauge tier={activeRun.tier} sources={r.searchedSources} stats={r.verifiedStats}/>
+          <PersonaRadarChart persona={activeRun.persona}/>
+        </div>
+
+        {r.archetypes?.length>0&&<ArchetypeDonutChart archetypes={r.archetypes}/>}
+        {activeRun.tier===3&&activeRun.verifiedData?.worldBank&&<WorldBankChart worldBank={activeRun.verifiedData.worldBank}/>}
+        {activeRun.tier===3&&activeRun.verifiedData?.exchangeRate&&<ExchangeRateCard exchangeRate={activeRun.verifiedData.exchangeRate}/>}
+
         <ProviderBadges providers={r.dataProviders||[]}/>
         {activeRun.tier===3&&<VerifiedStats stats={r.verifiedStats||[]} worldBankRaw={activeRun.verifiedData?.worldBank}/>}
         {activeRun.tier>=2&&<SourcesStrip sources={r.searchedSources||[]}/>}
+
+        {/* Archetype cards */}
         <div style={{marginBottom:16}}>
-          <div style={{display:"flex",alignItems:"center",marginBottom:14,padding:"14px 18px",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:16}}>
-            <div style={{width:34,height:34,borderRadius:10,background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,marginRight:10}}>🎭</div>
-            <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Consumer Archetypes</span>
-            <span style={{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px",marginLeft:8}}>{(r.archetypes||[]).length+" detected"}</span>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,padding:"14px 18px",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:34,height:34,borderRadius:10,background:"rgba(255,149,0,0.15)",border:"1px solid rgba(255,149,0,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🎭</div>
+              <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Consumer Archetypes</span>
+              <span style={{fontSize:9,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#FF9500",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"3px 10px"}}>{(r.archetypes||[]).length} detected</span>
+            </div>
           </div>
           {(r.archetypes||[]).map((a,i)=><ArchetypeCard key={i} archetype={a} index={i}/>)}
         </div>
+
         <ProseSection icon="🔍" title="Insights" text={r.insights} accentColor="#007AFF" gradientFrom="#007AFF" gradientTo="#0055FF"/>
         <ProseSection icon="🚀" title="Opportunities" text={r.opportunities} accentColor="#34C759" gradientFrom="#34C759" gradientTo="#30D158"/>
         <SolutionsSection solutions={r.solutions}/>
-        <button onClick={()=>triggerPDF(activeRun,activeProj?.name)} style={{width:"100%",background:"#FF9500",border:"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,color:"#000",cursor:"pointer",marginTop:8}}>🖨 Export as PDF Presentation</button>
       </div>
     </div>;
   }
+
   return null;
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-</body>
-</html>
